@@ -198,3 +198,75 @@
   font-size: 11px;
   color: var(--ink-soft);
 }
+
+.drink-modal__headline {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.drink-modal__reason {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.drink-modal__actions,
+.drink-modal__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.drink-modal__panel > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drink-modal__pick-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.drink-modal__pick-list button {
+  width: 100%;
+}
+
+.drink-modal__empty {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.detail-modal__deferred {
+  background: rgba(74, 144, 196, 0.1);
+  border: 1px dashed var(--sky);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+}
+
+.detail-modal__deferred h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.detail-modal__deferred .detail-modal__count-table li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-modal__mortgage-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  background: var(--ink-soft);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 8px;
+}

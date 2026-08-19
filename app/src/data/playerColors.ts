@@ -6,3 +6,6 @@ export const PLAYER_COLORS = [
   "#9b5de5",
   "#ffbe0b",
 ];
+
+/** プレイヤーの駒として使うキャラクター(動物モチーフの絵文字) */
+export const PLAYER_EMOJIS = ["🐵", "🐰", "🐯", "🐱", "🐶", "🦊"];

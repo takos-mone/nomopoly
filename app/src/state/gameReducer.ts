@@ -1,4 +1,7 @@
+import { CHANCE_CARDS, COMMUNITY_CHEST_CARDS } from "../data/cards";
 import { BOARD, GO_SQUARE_ID, JAIL_SQUARE_ID } from "../data/board";
+import { drawAndApplyCard, processCardEffectQueue } from "../logic/cardEffects";
+import { createPendingDrink, pushLog } from "../logic/drinkEngine";
 import {
   BUILD_COST_BY_GROUP,
   CONVENIENCE_RENT_BY_COUNT,
@@ -7,7 +10,7 @@ import {
   UTILITY_RENT_BY_COUNT,
   calcPropertyRent,
 } from "../logic/rent";
-import type { GameState, LogEntry, OwnableSquare, Player } from "../types";
+import type { GameState, OwnableSquare, Player } from "../types";
 import { isOwnable } from "../types";
 
 export type GameAction =
@@ -16,13 +19,14 @@ export type GameAction =
   | { type: "CONFIRM_PURCHASE" }
   | { type: "DECLINE_PURCHASE" }
   | { type: "BUILD_SHOP"; squareId: number }
-  | { type: "END_TURN" };
-
-let logSeq = 0;
-function nextLogId(): number {
-  logSeq += 1;
-  return logSeq;
-}
+  | { type: "END_TURN" }
+  | { type: "CONFIRM_DRINK" }
+  | { type: "DEFER_DRINK" }
+  | { type: "MORTGAGE_FOR_DRINK"; squareId: number }
+  | { type: "NEGOTIATE_TRANSFER"; squareId: number; targetPlayerId: number }
+  | { type: "NEGOTIATE_PENALTY_GAME" }
+  | { type: "RESOLVE_DEFERRED"; index: number }
+  | { type: "REPAY_MORTGAGE"; squareId: number };
 
 let cardDrawSeq = 0;
 function nextCardDrawSeq(): number {
@@ -38,16 +42,16 @@ export function createInitialState(): GameState {
     squares: BOARD,
     ownership: {},
     shopLevel: {},
+    mortgages: {},
     log: [],
     lastDice: null,
     pendingPurchase: null,
+    pendingDrink: null,
+    pendingCardQueue: [],
+    pendingCardName: null,
     lastCardDraw: null,
     phase: "setup",
   };
-}
-
-function pushLog(log: LogEntry[], turn: number, playerId: number, message: string): LogEntry[] {
-  return [...log, { id: nextLogId(), turn, playerId, message }];
 }
 
 function ownsFullGroup(state: GameState, playerId: number, colorGroup: string): boolean {
@@ -59,6 +63,11 @@ function ownsFullGroup(state: GameState, playerId: number, colorGroup: string): 
 
 function currentPlayer(state: GameState): Player {
   return state.players[state.currentPlayerIndex];
+}
+
+function drawRandomCard(pile: "chance" | "communityChest") {
+  const deck = pile === "chance" ? CHANCE_CARDS : COMMUNITY_CHEST_CARDS;
+  return deck[Math.floor(Math.random() * deck.length)];
 }
 
 function resolveLanding(state: GameState): GameState {
@@ -76,27 +85,23 @@ function resolveLanding(state: GameState): GameState {
       log(`${square.name}(${square.price} unit)に到着。購入できます。`);
     } else if (ownerId === player.id) {
       log(`${square.name}は自分の物件。何も起きない。`);
+    } else if (next.mortgages[square.id]) {
+      log(`${square.name}は抵当中のため家賃は発生しない。`);
     } else {
       const owner = next.players.find((p) => p.id === ownerId)!;
       const amount = calcRentFor(next, square, ownerId);
-      const updatedPlayers = next.players.map((p) =>
-        p.id === player.id ? { ...p, totalUnitsDrunk: p.totalUnitsDrunk + amount } : p,
-      );
-      next = { ...next, players: updatedPlayers };
-      log(`${square.name}は${owner.name}の物件。${amount} unit飲む。`);
+      next = createPendingDrink(next, player.id, amount, `${square.name}の家賃(${owner.name}へ)`);
     }
   } else if (square.type === "tax") {
-    const updatedPlayers = next.players.map((p) =>
-      p.id === player.id ? { ...p, totalUnitsDrunk: p.totalUnitsDrunk + square.amount } : p,
-    );
-    next = { ...next, players: updatedPlayers };
-    log(`${square.name}: ${square.amount} unit支払う。`);
+    next = createPendingDrink(next, player.id, square.amount, square.name);
   } else if (square.type === "chance") {
     next = { ...next, lastCardDraw: { pile: "chance", seq: nextCardDrawSeq() } };
-    log("チャンスカードを引いた(カード効果は今後実装)。");
+    const card = drawRandomCard("chance");
+    next = drawAndApplyCard(next, card, player.id);
   } else if (square.type === "communityChest") {
     next = { ...next, lastCardDraw: { pile: "communityChest", seq: nextCardDrawSeq() } };
-    log("共同基金カードを引いた(カード効果は今後実装)。");
+    const card = drawRandomCard("communityChest");
+    next = drawAndApplyCard(next, card, player.id);
   } else if (square.type === "jail") {
     log("タクシー待機所を見学中(効果なし)。");
   } else if (square.type === "freeParking") {
@@ -133,6 +138,13 @@ function calcRentFor(state: GameState, square: OwnableSquare, ownerId: number): 
   return UTILITY_RENT_BY_COUNT[ownedCount] ?? 3;
 }
 
+/** pendingDrinkが解消された後、カード効果の残りキューがあれば続きを処理する */
+function continueCardQueueIfAny(state: GameState): GameState {
+  if (state.pendingCardQueue.length === 0) return state;
+  const player = currentPlayer(state);
+  return processCardEffectQueue(state, state.pendingCardQueue, player.id, state.pendingCardName ?? "カード");
+}
+
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "START_GAME": {
@@ -144,6 +156,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         voucherUnits: 0,
         skipNextTurn: false,
         eliminated: false,
+        deferredDrinks: [],
+        incomingMultiplier: 1,
+        incomingShield: false,
+        outgoingMultiplier: 1,
       }));
       return {
         ...createInitialState(),
@@ -155,7 +171,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "ROLL_DICE": {
-      if (state.pendingPurchase) return state;
+      if (state.pendingPurchase || state.pendingDrink) return state;
       const d1 = 1 + Math.floor(Math.random() * 6);
       const d2 = 1 + Math.floor(Math.random() * 6);
       const player = currentPlayer(state);
@@ -229,10 +245,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "BUILD_SHOP": {
+      if (state.pendingDrink) return state;
       const player = currentPlayer(state);
       const square = state.squares[action.squareId];
       if (square.type !== "property") return state;
       if (state.ownership[square.id] !== player.id) return state;
+      if (state.mortgages[square.id]) return state;
       const level = state.shopLevel[square.id] ?? 0;
       if (level >= 5) return state;
       const cost = BUILD_COST_BY_GROUP[square.colorGroup];
@@ -255,7 +273,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "END_TURN": {
-      if (state.pendingPurchase) return state;
+      if (state.pendingPurchase || state.pendingDrink) return state;
       const alive = state.players.filter((p) => !p.eliminated);
       if (alive.length <= 1) {
         return { ...state, phase: "finished" };
@@ -285,6 +303,123 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentPlayerIndex: nextIndex,
         lastDice: null,
       };
+    }
+
+    case "CONFIRM_DRINK": {
+      if (!state.pendingDrink) return state;
+      const { playerId, amount, repaySquareId } = state.pendingDrink;
+      const player = state.players.find((p) => p.id === playerId)!;
+      const players = state.players.map((p) =>
+        p.id === playerId ? { ...p, totalUnitsDrunk: p.totalUnitsDrunk + amount } : p,
+      );
+      const mortgages = { ...state.mortgages };
+      let log = pushLog(state.log, state.turn, playerId, `${player.name}は${amount} unit飲みきった。`);
+      if (repaySquareId !== undefined) {
+        delete mortgages[repaySquareId];
+        log = pushLog(log, state.turn, playerId, `${state.squares[repaySquareId].name}の抵当を完済した。`);
+      }
+      const next: GameState = { ...state, players, mortgages, log, pendingDrink: null };
+      return continueCardQueueIfAny(next);
+    }
+
+    case "DEFER_DRINK": {
+      if (!state.pendingDrink) return state;
+      const { playerId, amount } = state.pendingDrink;
+      const player = state.players.find((p) => p.id === playerId)!;
+      const players = state.players.map((p) =>
+        p.id === playerId ? { ...p, deferredDrinks: [...p.deferredDrinks, amount] } : p,
+      );
+      const log = pushLog(
+        state.log,
+        state.turn,
+        playerId,
+        `${player.name}は${amount} unitを「後で飲む」に先送りした。`,
+      );
+      const next: GameState = { ...state, players, log, pendingDrink: null };
+      return continueCardQueueIfAny(next);
+    }
+
+    case "MORTGAGE_FOR_DRINK": {
+      if (!state.pendingDrink) return state;
+      const { playerId, amount, reason } = state.pendingDrink;
+      const square = state.squares[action.squareId];
+      if (state.ownership[action.squareId] !== playerId) return state;
+      if (state.mortgages[action.squareId]) return state;
+      const debt = Math.ceil(amount * 1.1);
+      const player = state.players.find((p) => p.id === playerId)!;
+      const log = pushLog(
+        state.log,
+        state.turn,
+        playerId,
+        `${player.name}は${square.name}を抵当に入れて${reason}(${amount} unit)を免除された。返済時は${debt} unit。`,
+      );
+      const next: GameState = {
+        ...state,
+        mortgages: { ...state.mortgages, [action.squareId]: { debt } },
+        log,
+        pendingDrink: null,
+      };
+      return continueCardQueueIfAny(next);
+    }
+
+    case "NEGOTIATE_TRANSFER": {
+      if (!state.pendingDrink) return state;
+      const { playerId, amount, reason } = state.pendingDrink;
+      if (state.ownership[action.squareId] !== playerId) return state;
+      if (action.targetPlayerId === playerId) return state;
+      const square = state.squares[action.squareId];
+      const giver = state.players.find((p) => p.id === playerId)!;
+      const receiver = state.players.find((p) => p.id === action.targetPlayerId)!;
+      const ownership = { ...state.ownership, [action.squareId]: action.targetPlayerId };
+      const log = pushLog(
+        state.log,
+        state.turn,
+        playerId,
+        `${giver.name}は${square.name}を${receiver.name}に譲り、${reason}を肩代わりしてもらった。`,
+      );
+      const next = createPendingDrink({ ...state, ownership, log, pendingDrink: null }, action.targetPlayerId, amount, `${reason}(譲渡された分)`);
+      return next;
+    }
+
+    case "NEGOTIATE_PENALTY_GAME": {
+      if (!state.pendingDrink) return state;
+      const { playerId } = state.pendingDrink;
+      const player = state.players.find((p) => p.id === playerId)!;
+      const log = pushLog(state.log, state.turn, playerId, `${player.name}は罰ゲームで飲みの代わりとした。`);
+      const next: GameState = { ...state, log, pendingDrink: null };
+      return continueCardQueueIfAny(next);
+    }
+
+    case "RESOLVE_DEFERRED": {
+      const player = state.players.find((p) => p.deferredDrinks.length > action.index);
+      if (!player) return state;
+      const amount = player.deferredDrinks[action.index];
+      const players = state.players.map((p) =>
+        p.id === player.id
+          ? {
+              ...p,
+              totalUnitsDrunk: p.totalUnitsDrunk + amount,
+              deferredDrinks: p.deferredDrinks.filter((_, i) => i !== action.index),
+            }
+          : p,
+      );
+      return {
+        ...state,
+        players,
+        log: pushLog(state.log, state.turn, player.id, `${player.name}は先送りしていた${amount} unitを飲んだ。`),
+      };
+    }
+
+    case "REPAY_MORTGAGE": {
+      if (state.pendingDrink) return state;
+      const mortgage = state.mortgages[action.squareId];
+      if (!mortgage) return state;
+      const ownerId = state.ownership[action.squareId];
+      if (ownerId === undefined) return state;
+      const square = state.squares[action.squareId];
+      return createPendingDrink(state, ownerId, mortgage.debt, `${square.name}の抵当返済`, {
+        repaySquareId: action.squareId,
+      });
     }
 
     default:

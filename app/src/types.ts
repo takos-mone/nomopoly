@@ -1,3 +1,5 @@
+import type { CardEffect } from "./data/cards";
+
 export type ColorGroup =
   | "brown"
   | "lightblue"
@@ -72,6 +74,10 @@ export interface Player {
   voucherUnits: number; // GOで得た「割引権」の残高
   skipNextTurn: boolean;
   eliminated: boolean;
+  deferredDrinks: number[]; // 「後で飲む」に回した分の一覧(unit)
+  incomingMultiplier: number; // 次に自分が受ける飲酒量の倍率(倍プッシュ)。使用後1に戻る
+  incomingShield: boolean; // 次に自分が受ける飲酒を1回無効化(今日は休み)。使用後false
+  outgoingMultiplier: number; // 次にカードで誰かに飲ませる量の倍率(今夜は無礼講)。使用後1に戻る
 }
 
 /** マスID -> 所有プレイヤーID (未所有はundefined) */
@@ -79,6 +85,18 @@ export type Ownership = Record<number, number | undefined>;
 
 /** マスID -> 店舗レベル (0=土地のみ, 1-4=Lv, 5=最大Lv)。property のみ意味を持つ */
 export type ShopLevel = Record<number, number>;
+
+/** マスID -> 抵当情報。抵当中は家賃を徴収できず、改装もできない */
+export type Mortgages = Record<number, { debt: number } | undefined>;
+
+/** 飲み(受動的に発生した飲酒)の確認待ち状態 */
+export interface PendingDrink {
+  playerId: number;
+  amount: number;
+  reason: string;
+  /** 抵当返済のための飲みである場合、完済対象のマスID */
+  repaySquareId?: number;
+}
 
 export interface LogEntry {
   id: number;
@@ -101,9 +119,14 @@ export interface GameState {
   squares: Square[];
   ownership: Ownership;
   shopLevel: ShopLevel;
+  mortgages: Mortgages;
   log: LogEntry[];
   lastDice: [number, number] | null;
   pendingPurchase: { squareId: number; price: number } | null;
+  pendingDrink: PendingDrink | null;
+  /** 現在処理中のカードの、まだ適用していない残り効果(1枚のカードが複数人に飲ませる場合の待ち行列) */
+  pendingCardQueue: CardEffect[];
+  pendingCardName: string | null;
   lastCardDraw: CardDrawEvent | null;
   phase: "setup" | "playing" | "finished";
 }

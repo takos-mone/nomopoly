@@ -7,22 +7,45 @@
   box-shadow: 0 3px 0 var(--ink), var(--shadow-soft);
   padding: 6px;
   transition: transform 0.08s ease;
+  transform-style: preserve-3d;
   flex-shrink: 0;
 }
 
 .dice-face--spinning {
-  animation: dice-spin 0.35s linear infinite;
+  animation: dice-tumble 0.5s linear infinite;
 }
 
-@keyframes dice-spin {
+@keyframes dice-tumble {
   0% {
-    transform: rotate(0deg) scale(1);
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) translateY(0);
+  }
+  25% {
+    transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg) translateY(-14px);
   }
   50% {
-    transform: rotate(8deg) scale(1.05);
+    transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg) translateY(0);
+  }
+  75% {
+    transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg) translateY(-8px);
   }
   100% {
-    transform: rotate(-8deg) scale(1);
+    transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg) translateY(0);
+  }
+}
+
+.dice-face--landed {
+  animation: dice-land 0.32s cubic-bezier(0.3, 1.6, 0.4, 1);
+}
+
+@keyframes dice-land {
+  0% {
+    transform: scale(1.35) rotateZ(-10deg);
+  }
+  60% {
+    transform: scale(0.92) rotateZ(4deg);
+  }
+  100% {
+    transform: scale(1) rotateZ(0deg);
   }
 }
 

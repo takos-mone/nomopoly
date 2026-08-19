@@ -16,6 +16,7 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
   const current = state.players[state.currentPlayerIndex];
   const hasRolledThisTurn = state.lastDice !== null;
   const [rolling, setRolling] = useState(false);
+  const [justLanded, setJustLanded] = useState(false);
   const [displayDice, setDisplayDice] = useState<[number, number]>([1, 1]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -42,6 +43,8 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
       intervalRef.current = null;
     }
     setRolling(false);
+    setJustLanded(true);
+    setTimeout(() => setJustLanded(false), 320);
     dispatch({ type: "ROLL_DICE" });
   };
 
@@ -52,8 +55,8 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
       <h3>{current.name}のターン</h3>
 
       <div className="dice-tray">
-        <Dice value={shownDice[0]} spinning={rolling} />
-        <Dice value={shownDice[1]} spinning={rolling} />
+        <Dice value={shownDice[0]} spinning={rolling} landed={justLanded} />
+        <Dice value={shownDice[1]} spinning={rolling} landed={justLanded} />
         {state.lastDice && !rolling && (
           <span className="dice-tray__total">
             合計 {state.lastDice[0] + state.lastDice[1]}

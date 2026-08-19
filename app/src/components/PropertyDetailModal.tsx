@@ -23,6 +23,8 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
   const owner = ownerId !== undefined ? state.players.find((p) => p.id === ownerId) : undefined;
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isMyTurn = state.phase === "playing" && owner?.id === currentPlayer?.id;
+  const mortgage = state.mortgages[square.id];
+  const blocked = !!state.pendingPurchase || !!state.pendingDrink;
 
   return (
     <Modal title={square.name} onClose={onClose}>
@@ -30,19 +32,31 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
         {square.type === "property" && (
           <>
             <p className="detail-modal__tag">{COLOR_GROUP_LABEL[square.colorGroup]}</p>
-            <OwnerLine owner={owner} />
+            <OwnerLine owner={owner} mortgaged={!!mortgage} />
             <dl className="detail-modal__facts">
               <dt>購入価格</dt>
               <dd>{square.price} unit</dd>
               <dt>次のレベルへの改装費</dt>
               <dd>{BUILD_COST_BY_GROUP[square.colorGroup]} unit / 回</dd>
+              {mortgage && (
+                <>
+                  <dt>抵当返済額</dt>
+                  <dd>{mortgage.debt} unit</dd>
+                </>
+              )}
             </dl>
-            <h3>訪問時に飲む量(店舗レベル別)</h3>
-            <RentTable
-              price={square.price}
-              currentTier={owner ? tierFromLevel(state.shopLevel[square.id] ?? 0, isFullGroupOwned(state, square)) : undefined}
-            />
-            {isMyTurn && (state.shopLevel[square.id] ?? 0) < 5 && !state.pendingPurchase && (
+            {mortgage ? (
+              <p className="detail-modal__empty">抵当中のため家賃は発生せず、改装もできません。</p>
+            ) : (
+              <>
+                <h3>訪問時に飲む量(店舗レベル別)</h3>
+                <RentTable
+                  price={square.price}
+                  currentTier={owner ? tierFromLevel(state.shopLevel[square.id] ?? 0, isFullGroupOwned(state, square)) : undefined}
+                />
+              </>
+            )}
+            {isMyTurn && !mortgage && (state.shopLevel[square.id] ?? 0) < 5 && !blocked && (
               <button
                 className="primary-button"
                 onClick={() => dispatch({ type: "BUILD_SHOP", squareId: square.id })}
@@ -50,42 +64,81 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
                 改装する (+{BUILD_COST_BY_GROUP[square.colorGroup]} unit)
               </button>
             )}
+            {isMyTurn && mortgage && !blocked && (
+              <button className="primary-button" onClick={() => dispatch({ type: "REPAY_MORTGAGE", squareId: square.id })}>
+                抵当を返済する (+{mortgage.debt} unit)
+              </button>
+            )}
           </>
         )}
 
         {square.type === "convenience" && (
           <>
-            <OwnerLine owner={owner} />
+            <OwnerLine owner={owner} mortgaged={!!mortgage} />
             <dl className="detail-modal__facts">
               <dt>購入価格</dt>
               <dd>{square.price} unit</dd>
+              {mortgage && (
+                <>
+                  <dt>抵当返済額</dt>
+                  <dd>{mortgage.debt} unit</dd>
+                </>
+              )}
             </dl>
-            <h3>訪問時に飲む量(所有軒数別)</h3>
-            <ul className="detail-modal__count-table">
-              {Object.entries(CONVENIENCE_RENT_BY_COUNT).map(([count, amount]) => (
-                <li key={count}>
-                  {count}軒所有: {amount} unit
-                </li>
-              ))}
-            </ul>
+            {mortgage ? (
+              <p className="detail-modal__empty">抵当中のため家賃は発生しません。</p>
+            ) : (
+              <>
+                <h3>訪問時に飲む量(所有軒数別)</h3>
+                <ul className="detail-modal__count-table">
+                  {Object.entries(CONVENIENCE_RENT_BY_COUNT).map(([count, amount]) => (
+                    <li key={count}>
+                      {count}軒所有: {amount} unit
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {isMyTurn && mortgage && !blocked && (
+              <button className="primary-button" onClick={() => dispatch({ type: "REPAY_MORTGAGE", squareId: square.id })}>
+                抵当を返済する (+{mortgage.debt} unit)
+              </button>
+            )}
           </>
         )}
 
         {square.type === "utility" && (
           <>
-            <OwnerLine owner={owner} />
+            <OwnerLine owner={owner} mortgaged={!!mortgage} />
             <dl className="detail-modal__facts">
               <dt>購入価格</dt>
               <dd>{square.price} unit</dd>
+              {mortgage && (
+                <>
+                  <dt>抵当返済額</dt>
+                  <dd>{mortgage.debt} unit</dd>
+                </>
+              )}
             </dl>
-            <h3>訪問時に飲む量(所有種類数別)</h3>
-            <ul className="detail-modal__count-table">
-              {Object.entries(UTILITY_RENT_BY_COUNT).map(([count, amount]) => (
-                <li key={count}>
-                  {count}種類所有: {amount} unit
-                </li>
-              ))}
-            </ul>
+            {mortgage ? (
+              <p className="detail-modal__empty">抵当中のため家賃は発生しません。</p>
+            ) : (
+              <>
+                <h3>訪問時に飲む量(所有種類数別)</h3>
+                <ul className="detail-modal__count-table">
+                  {Object.entries(UTILITY_RENT_BY_COUNT).map(([count, amount]) => (
+                    <li key={count}>
+                      {count}種類所有: {amount} unit
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {isMyTurn && mortgage && !blocked && (
+              <button className="primary-button" onClick={() => dispatch({ type: "REPAY_MORTGAGE", squareId: square.id })}>
+                抵当を返済する (+{mortgage.debt} unit)
+              </button>
+            )}
           </>
         )}
 
@@ -109,7 +162,7 @@ function isFullGroupOwned(state: GameState, square: Square): boolean {
   return group.every((sq) => state.ownership[sq.id] === ownerId);
 }
 
-function OwnerLine({ owner }: { owner: GameState["players"][number] | undefined }) {
+function OwnerLine({ owner, mortgaged }: { owner: GameState["players"][number] | undefined; mortgaged: boolean }) {
   if (!owner) {
     return <p className="detail-modal__owner detail-modal__owner--none">未所有</p>;
   }
@@ -117,6 +170,7 @@ function OwnerLine({ owner }: { owner: GameState["players"][number] | undefined 
     <p className="detail-modal__owner">
       <span className="detail-modal__swatch" style={{ background: PLAYER_COLORS[owner.id % PLAYER_COLORS.length] }} />
       所有者: {owner.name}
+      {mortgaged && <span className="detail-modal__mortgage-badge">抵当中</span>}
     </p>
   );
 }

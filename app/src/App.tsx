@@ -1,6 +1,7 @@
 import { useReducer, useState } from "react";
 import { Board } from "./components/Board";
 import { DiceControls } from "./components/DiceControls";
+import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
 import { EventLog } from "./components/EventLog";
 import { PlayerDetailModal } from "./components/PlayerDetailModal";
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -60,6 +61,8 @@ function App() {
           }}
         />
       )}
+
+      {state.pendingDrink && <DrinkResolutionModal state={state} dispatch={dispatch} />}
     </>
   );
 }

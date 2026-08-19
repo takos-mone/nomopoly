@@ -1,5 +1,5 @@
 import type { GameState } from "../types";
-import { PLAYER_COLORS } from "../data/playerColors";
+import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 
 interface PlayerPanelProps {
   state: GameState;
@@ -27,7 +27,9 @@ export function PlayerPanel({ state, onSelectPlayer }: PlayerPanelProps) {
                   <span
                     className="player-list__swatch"
                     style={{ background: PLAYER_COLORS[p.id % PLAYER_COLORS.length] }}
-                  />
+                  >
+                    {PLAYER_EMOJIS[p.id % PLAYER_EMOJIS.length]}
+                  </span>
                   <strong>{p.name}</strong>
                   {isCurrent && <span className="player-list__turn-badge">手番</span>}
                 </div>
