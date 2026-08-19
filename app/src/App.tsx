@@ -1,4 +1,4 @@
-import { useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Board } from "./components/Board";
 import { DiceControls } from "./components/DiceControls";
 import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
@@ -10,6 +10,7 @@ import { PropertyDetailModal } from "./components/PropertyDetailModal";
 import { SetupScreen } from "./components/SetupScreen";
 import { TargetChoiceModal } from "./components/TargetChoiceModal";
 import { useTokenAnimation } from "./hooks/useTokenAnimation";
+import { isMuted, playElimination, setMuted } from "./logic/sound";
 import { createInitialState, gameReducer } from "./state/gameReducer";
 import "./App.css";
 
@@ -17,10 +18,24 @@ function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
   const [selectedSquareId, setSelectedSquareId] = useState<number | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [muted, setMutedState] = useState(isMuted);
   const visualPositions = useTokenAnimation(state.players, state.squares.length);
+  const prevEliminatedCount = useRef(0);
+
+  useEffect(() => {
+    const eliminatedCount = state.players.filter((p) => p.eliminated).length;
+    if (eliminatedCount > prevEliminatedCount.current) {
+      playElimination();
+    }
+    prevEliminatedCount.current = eliminatedCount;
+  }, [state.players]);
 
   if (state.phase === "setup") {
-    return <SetupScreen onStart={(names) => dispatch({ type: "START_GAME", names })} />;
+    return (
+      <SetupScreen
+        onStart={(names, eliminationThreshold) => dispatch({ type: "START_GAME", names, eliminationThreshold })}
+      />
+    );
   }
 
   const selectedSquare = selectedSquareId !== null ? state.squares[selectedSquareId] : null;
@@ -36,6 +51,19 @@ function App() {
       <header className="app-header">
         <h1>飲もポリー</h1>
         <span className="app-header__subtitle">モノポリー × 飲みゲー</span>
+        <button
+          type="button"
+          className="app-header__mute"
+          onClick={() => {
+            const next = !muted;
+            setMuted(next);
+            setMutedState(next);
+          }}
+          aria-label={muted ? "効果音をオンにする" : "効果音をオフにする"}
+          title={muted ? "効果音をオンにする" : "効果音をオフにする"}
+        >
+          {muted ? "🔇" : "🔊"}
+        </button>
       </header>
       <div className="app-layout">
         <div className="app-layout__board">

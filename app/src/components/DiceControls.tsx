@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { playDiceLand, playDiceTick, playPurchase } from "../logic/sound";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Dice } from "./Dice";
@@ -39,6 +40,7 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
     setRolling(true);
     intervalRef.current = setInterval(() => {
       setDisplayDice([randomFace(), randomFace()]);
+      playDiceTick();
     }, 90);
   };
 
@@ -50,6 +52,7 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
     setRolling(false);
     setJustLanded(true);
     setTimeout(() => setJustLanded(false), 320);
+    playDiceLand();
     dispatch({ type: "ROLL_DICE" });
   };
 
@@ -75,7 +78,13 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
         ) : (
           <div className="purchase-prompt">
             <p>{price} unit 飲み終えましたか?</p>
-            <button className="primary-button" onClick={() => dispatch({ type: "CONFIRM_PURCHASE" })}>
+            <button
+              className="primary-button"
+              onClick={() => {
+                playPurchase();
+                dispatch({ type: "CONFIRM_PURCHASE" });
+              }}
+            >
               飲み終えた
             </button>
             <button className="secondary-button" onClick={() => setConfirmingPurchase(false)}>

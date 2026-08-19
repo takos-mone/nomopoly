@@ -10,11 +10,12 @@
 }
 
 .app-header {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: center;
   gap: 12px;
-  padding: 16px 16px 0;
+  padding: 16px 56px 0;
   flex-wrap: wrap;
 }
 
@@ -26,6 +27,20 @@
 .app-header__subtitle {
   color: var(--ink-soft);
   font-size: 13px;
+}
+
+.app-header__mute {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
 }
 
 .app-layout__board {
@@ -93,6 +108,44 @@
   color: var(--ink);
   font-family: var(--sans);
   font-size: 15px;
+}
+
+.setup-advanced-toggle {
+  background: none;
+  border: none;
+  color: var(--sky);
+  font-family: var(--sans);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px;
+  align-self: center;
+}
+
+.setup-advanced {
+  background: var(--paper-warm);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.setup-advanced label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.setup-advanced input[type="number"] {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  width: 100px;
 }
 
 .primary-button,

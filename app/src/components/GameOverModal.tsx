@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
+import { playVictory } from "../logic/sound";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Modal } from "./Modal";
@@ -11,6 +13,10 @@ interface GameOverModalProps {
 export function GameOverModal({ state, dispatch }: GameOverModalProps) {
   const survivors = state.players.filter((p) => !p.eliminated);
   const winner = survivors.length === 1 ? survivors[0] : null;
+
+  useEffect(() => {
+    playVictory();
+  }, []);
 
   const ranked = [...state.players].sort((a, b) => {
     if (a.eliminated !== b.eliminated) return a.eliminated ? 1 : -1;

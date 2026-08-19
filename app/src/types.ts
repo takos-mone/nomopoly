@@ -138,5 +138,7 @@ export interface GameState {
   /** カード効果で移動した後、着地マスの家賃・購入・カード効果を連鎖解決する必要があるか */
   pendingLandingResolution: boolean;
   lastCardDraw: CardDrawEvent | null;
+  /** 累計飲酒量がこのunitに達したプレイヤーは脱落する(セットアップ画面でカスタマイズ可能) */
+  eliminationThreshold: number;
   phase: "setup" | "playing" | "finished";
 }

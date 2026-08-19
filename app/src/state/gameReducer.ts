@@ -2,7 +2,7 @@ import { CHANCE_CARDS, COMMUNITY_CHEST_CARDS } from "../data/cards";
 import { BOARD, GO_SQUARE_ID, JAIL_SQUARE_ID } from "../data/board";
 import { drawAndApplyCard, processCardEffectQueue, resolveChosenTarget } from "../logic/cardEffects";
 import { createPendingDrink, pushLog } from "../logic/drinkEngine";
-import { applyElimination } from "../logic/elimination";
+import { DEFAULT_ELIMINATION_THRESHOLD, applyElimination } from "../logic/elimination";
 import {
   CONVENIENCE_RENT_BY_COUNT,
   GO_LAND_EXEMPTION,
@@ -16,7 +16,7 @@ import type { GameState, Player, PropertySquare, ConvenienceSquare } from "../ty
 import { isOwnable } from "../types";
 
 export type GameAction =
-  | { type: "START_GAME"; names: string[] }
+  | { type: "START_GAME"; names: string[]; eliminationThreshold?: number }
   | { type: "ROLL_DICE" }
   | { type: "CONFIRM_PURCHASE" }
   | { type: "DECLINE_PURCHASE" }
@@ -57,6 +57,7 @@ export function createInitialState(): GameState {
     pendingCardName: null,
     pendingLandingResolution: false,
     lastCardDraw: null,
+    eliminationThreshold: DEFAULT_ELIMINATION_THRESHOLD,
     phase: "setup",
   };
 }
@@ -195,6 +196,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         players,
         phase: "playing",
         turn: 1,
+        eliminationThreshold: action.eliminationThreshold ?? DEFAULT_ELIMINATION_THRESHOLD,
         log: pushLog([], 1, -1, "ゲーム開始!"),
       };
     }

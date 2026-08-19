@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { playCardDraw } from "../logic/sound";
 import type { CardDrawEvent } from "../types";
 import "./CardDrawOverlay.css";
 
@@ -17,6 +18,7 @@ export function CardDrawOverlay({ cardDraw }: CardDrawOverlayProps) {
   useEffect(() => {
     if (!cardDraw) return;
     setVisibleSeq(cardDraw.seq);
+    playCardDraw();
     const timer = setTimeout(() => setVisibleSeq(null), 1800);
     return () => clearTimeout(timer);
   }, [cardDraw]);
@@ -27,7 +29,7 @@ export function CardDrawOverlay({ cardDraw }: CardDrawOverlayProps) {
     <div className="card-draw-overlay">
       <div className={`card-draw-overlay__card card-draw-overlay__card--${cardDraw.pile}`} key={cardDraw.seq}>
         <span className="card-draw-overlay__label">{PILE_LABEL[cardDraw.pile]}</span>
-        <small className="card-draw-overlay__note">効果は今後実装予定</small>
+        <small className="card-draw-overlay__note">効果を確認しよう</small>
       </div>
     </div>
   );

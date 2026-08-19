@@ -1,8 +1,8 @@
 import type { GameState } from "../types";
 import { pushLog } from "./drinkEngine";
 
-/** この累計飲酒量(unit)に達したプレイヤーは脱落する */
-export const ELIMINATION_THRESHOLD = 80;
+/** 累計飲酒量の脱落ラインのデフォルト値(unit)。セットアップ画面で変更可能 */
+export const DEFAULT_ELIMINATION_THRESHOLD = 80;
 
 function eliminatePlayer(state: GameState, playerId: number): GameState {
   const player = state.players.find((p) => p.id === playerId)!;
@@ -41,7 +41,7 @@ export function applyElimination(state: GameState): GameState {
   let next = state;
   for (const player of state.players) {
     if (player.eliminated) continue;
-    if (player.totalUnitsDrunk < ELIMINATION_THRESHOLD) continue;
+    if (player.totalUnitsDrunk < state.eliminationThreshold) continue;
     next = eliminatePlayer(next, player.id);
   }
 

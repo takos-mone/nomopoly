@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PLAYER_COLORS } from "../data/playerColors";
 import { calcMortgageExemption } from "../logic/rent";
+import { playDrinkConfirm } from "../logic/sound";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Modal } from "./Modal";
@@ -54,6 +55,7 @@ export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalPr
             <button
               className="primary-button"
               onClick={() => {
+                playDrinkConfirm();
                 dispatch({ type: "CONFIRM_DRINK" });
                 close();
               }}
