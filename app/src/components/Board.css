@@ -1,0 +1,90 @@
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(60px, 1fr));
+  grid-template-rows: repeat(11, minmax(60px, 1fr));
+  gap: 2px;
+  background: #1b1b1b;
+  padding: 2px;
+  border-radius: 8px;
+  width: min(90vw, 900px);
+  aspect-ratio: 1 / 1;
+}
+
+.board-square {
+  position: relative;
+  background: #f5f0e6;
+  border-radius: 4px;
+  padding: 4px;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.board-square--go,
+.board-square--jail,
+.board-square--freeParking,
+.board-square--goToJail {
+  background: #ffe9b3;
+  font-weight: 600;
+}
+
+.board-square--chance {
+  background: #ffd6e0;
+}
+
+.board-square--communityChest {
+  background: #d6f5e3;
+}
+
+.board-square--tax {
+  background: #e0e0e0;
+}
+
+.board-square--convenience,
+.board-square--utility {
+  background: #dbeafe;
+}
+
+.board-square__stripe {
+  height: 8px;
+  margin: -4px -4px 4px -4px;
+}
+
+.board-square__name {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.board-square__price {
+  color: #555;
+}
+
+.board-square__owner {
+  margin-top: auto;
+  font-weight: 700;
+}
+
+.board-square__tokens {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.board-square__token {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+}
+
+.board-center {
+  grid-row: 2 / 11;
+  grid-column: 2 / 11;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #eee;
+  text-align: center;
+}
