@@ -270,3 +270,40 @@
   border-radius: 999px;
   padding: 1px 8px;
 }
+
+.gameover-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gameover-modal__winner {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--noren-dark);
+}
+
+.gameover-modal__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.gameover-modal__table th {
+  text-align: left;
+  color: var(--ink-soft);
+  font-weight: 400;
+  padding: 4px 6px;
+  border-bottom: 2px solid var(--border);
+}
+
+.gameover-modal__table td {
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.gameover-modal__row--eliminated {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}

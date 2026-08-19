@@ -3,6 +3,7 @@ import { Board } from "./components/Board";
 import { DiceControls } from "./components/DiceControls";
 import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
 import { EventLog } from "./components/EventLog";
+import { GameOverModal } from "./components/GameOverModal";
 import { PlayerDetailModal } from "./components/PlayerDetailModal";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { PropertyDetailModal } from "./components/PropertyDetailModal";
@@ -63,6 +64,7 @@ function App() {
       )}
 
       {state.pendingDrink && <DrinkResolutionModal state={state} dispatch={dispatch} />}
+      {state.phase === "finished" && <GameOverModal state={state} dispatch={dispatch} />}
     </>
   );
 }

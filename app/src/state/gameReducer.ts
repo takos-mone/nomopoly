@@ -2,6 +2,7 @@ import { CHANCE_CARDS, COMMUNITY_CHEST_CARDS } from "../data/cards";
 import { BOARD, GO_SQUARE_ID, JAIL_SQUARE_ID } from "../data/board";
 import { drawAndApplyCard, processCardEffectQueue } from "../logic/cardEffects";
 import { createPendingDrink, pushLog } from "../logic/drinkEngine";
+import { applyElimination } from "../logic/elimination";
 import {
   BUILD_COST_BY_GROUP,
   CONVENIENCE_RENT_BY_COUNT,
@@ -26,7 +27,8 @@ export type GameAction =
   | { type: "NEGOTIATE_TRANSFER"; squareId: number; targetPlayerId: number }
   | { type: "NEGOTIATE_PENALTY_GAME" }
   | { type: "RESOLVE_DEFERRED"; index: number }
-  | { type: "REPAY_MORTGAGE"; squareId: number };
+  | { type: "REPAY_MORTGAGE"; squareId: number }
+  | { type: "RESET_GAME" };
 
 let cardDrawSeq = 0;
 function nextCardDrawSeq(): number {
@@ -145,8 +147,11 @@ function continueCardQueueIfAny(state: GameState): GameState {
   return processCardEffectQueue(state, state.pendingCardQueue, player.id, state.pendingCardName ?? "カード");
 }
 
-export function gameReducer(state: GameState, action: GameAction): GameState {
+function baseReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
+    case "RESET_GAME":
+      return createInitialState();
+
     case "START_GAME": {
       const players: Player[] = action.names.map((name, i) => ({
         id: i,
@@ -425,4 +430,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     default:
       return state;
   }
+}
+
+/** 全アクションの後に脱落・勝利判定を通す */
+export function gameReducer(state: GameState, action: GameAction): GameState {
+  return applyElimination(baseReducer(state, action));
 }
