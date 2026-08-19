@@ -1,12 +1,12 @@
-export type CardTarget = "currentPlayer" | "random" | "leftNeighbor" | "richest" | "poorest";
+export type CardTarget = "currentPlayer" | "random" | "leftNeighbor" | "richest" | "poorest" | "choose";
 
 export type CardEffect =
   | { kind: "drink"; amount: number; target: CardTarget }
   | { kind: "allDrink"; amount: number }
-  | { kind: "voucher"; amount: number; target: CardTarget }
-  | { kind: "allVoucher"; amount: number }
-  | { kind: "duel"; amount: number }
-  | { kind: "coinFlip"; winVoucher: number; loseDrink: number }
+  | { kind: "exemption"; amount: number; target: CardTarget }
+  | { kind: "allExemption"; amount: number }
+  | { kind: "duel"; amount: number; chooseOpponent?: boolean }
+  | { kind: "coinFlip"; winExemption: number; loseDrink: number }
   | { kind: "moveRelative"; steps: number }
   | { kind: "moveToOwned" }
   | { kind: "extraRoll" }
@@ -25,14 +25,15 @@ export interface CardDef {
 
 /**
  * チャンスカード 16枚。docs/cards.md の設計に対応。
- * 「好きな相手を指名」系は実装簡略化のためランダム/ルールベースの対象選択にしている。
+ * 「好きな相手を指名」系(target: "choose" / chooseOpponent: true)は
+ * 実際にプレイヤーが対象を選ぶインタラクティブUIを介す。
  */
 export const CHANCE_CARDS: CardDef[] = [
   {
     id: "c1",
     name: "あの人に一杯",
-    description: "ランダムな1人が3 unit飲む",
-    effects: [{ kind: "drink", amount: 3, target: "random" }],
+    description: "指名した1人が3 unit飲む",
+    effects: [{ kind: "drink", amount: 3, target: "choose" }],
   },
   {
     id: "c2",
@@ -55,17 +56,17 @@ export const CHANCE_CARDS: CardDef[] = [
   {
     id: "c5",
     name: "連帯責任",
-    description: "自分とランダムな1人がそれぞれ2 unit飲む",
+    description: "自分と指名した1人がそれぞれ2 unit飲む",
     effects: [
       { kind: "drink", amount: 2, target: "currentPlayer" },
-      { kind: "drink", amount: 2, target: "random" },
+      { kind: "drink", amount: 2, target: "choose" },
     ],
   },
   {
     id: "c6",
     name: "道連れ",
-    description: "ランダムな相手と飲み対決(負けた方が3 unit飲む)",
-    effects: [{ kind: "duel", amount: 3 }],
+    description: "指名した相手と飲み対決(負けた方が3 unit飲む)",
+    effects: [{ kind: "duel", amount: 3, chooseOpponent: true }],
   },
   {
     id: "c7",
@@ -82,8 +83,8 @@ export const CHANCE_CARDS: CardDef[] = [
   {
     id: "c9",
     name: "チェイサー",
-    description: "自分の割引権+2",
-    effects: [{ kind: "voucher", amount: 2, target: "currentPlayer" }],
+    description: "自分の免除権+2",
+    effects: [{ kind: "exemption", amount: 2, target: "currentPlayer" }],
   },
   {
     id: "c10",
@@ -118,14 +119,14 @@ export const CHANCE_CARDS: CardDef[] = [
   {
     id: "c15",
     name: "一か八か",
-    description: "コイントス。表なら割引権+3、裏なら自分が3 unit飲む",
-    effects: [{ kind: "coinFlip", winVoucher: 3, loseDrink: 3 }],
+    description: "コイントス。表なら免除権+3、裏なら自分が3 unit飲む",
+    effects: [{ kind: "coinFlip", winExemption: 3, loseDrink: 3 }],
   },
   {
     id: "c16",
     name: "ジャンケン",
-    description: "ランダムな相手と勝負(負けた方が3 unit飲む)",
-    effects: [{ kind: "duel", amount: 3 }],
+    description: "指名した相手と勝負(負けた方が3 unit飲む)",
+    effects: [{ kind: "duel", amount: 3, chooseOpponent: true }],
   },
 ];
 
@@ -136,8 +137,8 @@ export const COMMUNITY_CHEST_CARDS: CardDef[] = [
   {
     id: "cc1",
     name: "臨時ボーナス",
-    description: "全員に割引権+2",
-    effects: [{ kind: "allVoucher", amount: 2 }],
+    description: "全員に免除権+2",
+    effects: [{ kind: "allExemption", amount: 2 }],
   },
   {
     id: "cc2",
@@ -166,8 +167,8 @@ export const COMMUNITY_CHEST_CARDS: CardDef[] = [
   {
     id: "cc6",
     name: "飲み放題",
-    description: "全員に割引権+1",
-    effects: [{ kind: "allVoucher", amount: 1 }],
+    description: "全員に免除権+1",
+    effects: [{ kind: "allExemption", amount: 1 }],
   },
   {
     id: "cc7",
@@ -196,14 +197,14 @@ export const COMMUNITY_CHEST_CARDS: CardDef[] = [
   {
     id: "cc11",
     name: "格差是正",
-    description: "最も所有物件が少ないプレイヤーに割引権+3",
-    effects: [{ kind: "voucher", amount: 3, target: "poorest" }],
+    description: "最も所有物件が少ないプレイヤーに免除権+3",
+    effects: [{ kind: "exemption", amount: 3, target: "poorest" }],
   },
   {
     id: "cc12",
     name: "団体予約",
-    description: "自分の割引権+3",
-    effects: [{ kind: "voucher", amount: 3, target: "currentPlayer" }],
+    description: "自分の免除権+3",
+    effects: [{ kind: "exemption", amount: 3, target: "currentPlayer" }],
   },
   {
     id: "cc13",
@@ -214,8 +215,8 @@ export const COMMUNITY_CHEST_CARDS: CardDef[] = [
   {
     id: "cc14",
     name: "差し入れ",
-    description: "自分の割引権+4",
-    effects: [{ kind: "voucher", amount: 4, target: "currentPlayer" }],
+    description: "自分の免除権+4",
+    effects: [{ kind: "exemption", amount: 4, target: "currentPlayer" }],
   },
   {
     id: "cc15",

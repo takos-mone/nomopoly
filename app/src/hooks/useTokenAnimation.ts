@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Player } from "../types";
 
-const HOP_INTERVAL_MS = 110;
+const HOP_INTERVAL_MS = 280;
 
 /**
  * プレイヤーの駒を、実際の座標(position)へ1マスずつホップさせながら追従させる。

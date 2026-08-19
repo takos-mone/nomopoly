@@ -1,5 +1,5 @@
 import { COLOR_GROUP_LABEL } from "../data/board";
-import { BUILD_COST_BY_GROUP, calcPropertyRent } from "../logic/rent";
+import { calcBuildCost, calcPropertyRent } from "../logic/rent";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState, Player } from "../types";
 import { Modal } from "./Modal";
@@ -15,7 +15,7 @@ interface PlayerDetailModalProps {
 export function PlayerDetailModal({ player, state, dispatch, onClose, onSelectSquare }: PlayerDetailModalProps) {
   const owned = state.squares.filter((sq) => state.ownership[sq.id] === player.id);
   const isCurrent = state.players[state.currentPlayerIndex]?.id === player.id;
-  const blocked = !!state.pendingPurchase || !!state.pendingDrink;
+  const blocked = !!state.pendingPurchase || !!state.pendingDrink || !!state.pendingTargetChoice;
 
   return (
     <Modal title={`${player.name}の所有物件`} onClose={onClose}>
@@ -24,8 +24,8 @@ export function PlayerDetailModal({ player, state, dispatch, onClose, onSelectSq
         <dd>{state.squares[player.position].name}</dd>
         <dt>累計飲酒量</dt>
         <dd>{player.totalUnitsDrunk} unit</dd>
-        <dt>割引権</dt>
-        <dd>{player.voucherUnits} unit</dd>
+        <dt>免除権</dt>
+        <dd>{player.exemptionUnits} unit</dd>
         <dt>所有物件数</dt>
         <dd>{owned.length}件</dd>
       </dl>
@@ -75,7 +75,7 @@ export function PlayerDetailModal({ player, state, dispatch, onClose, onSelectSq
                     className="small-button"
                     onClick={() => dispatch({ type: "BUILD_SHOP", squareId: sq.id })}
                   >
-                    改装 (+{BUILD_COST_BY_GROUP[sq.colorGroup]}u)
+                    改装 (+{calcBuildCost(sq.price)}u)
                   </button>
                 )}
                 {canRepay && mortgage && (

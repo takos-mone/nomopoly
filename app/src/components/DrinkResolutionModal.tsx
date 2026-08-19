@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PLAYER_COLORS } from "../data/playerColors";
+import { calcMortgageExemption } from "../logic/rent";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Modal } from "./Modal";
@@ -21,7 +22,7 @@ export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalPr
   const owned = state.squares.filter(
     (sq) => state.ownership[sq.id] === player.id && sq.type !== "chance" && sq.type !== "communityChest",
   );
-  const mortgageable = owned.filter((sq) => !state.mortgages[sq.id]);
+  const mortgageable = owned.filter((sq) => !state.mortgages[sq.id] && "price" in sq);
   const otherPlayers = state.players.filter((p) => p.id !== player.id);
 
   const close = () => {
@@ -40,6 +41,16 @@ export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalPr
 
         {mode === "main" && (
           <div className="drink-modal__actions">
+            {player.exemptionUnits > 0 && (
+              <button
+                className="primary-button"
+                onClick={() => {
+                  dispatch({ type: "USE_EXEMPTION" });
+                }}
+              >
+                免除権を使う(所持{player.exemptionUnits}u / 最大{Math.min(player.exemptionUnits, pending.amount)}u軽減)
+              </button>
+            )}
             <button
               className="primary-button"
               onClick={() => {
@@ -69,21 +80,26 @@ export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalPr
 
         {mode === "mortgage" && (
           <div className="drink-modal__panel">
-            <p>抵当に入れる物件を選んでください(返済時は {Math.ceil(pending.amount * 1.1)} unit)。</p>
+            <p>抵当に入れる物件を選んでください(購入額の半分を免除権として獲得します)。</p>
             <ul className="drink-modal__pick-list">
-              {mortgageable.map((sq) => (
-                <li key={sq.id}>
-                  <button
-                    className="secondary-button"
-                    onClick={() => {
-                      dispatch({ type: "MORTGAGE_FOR_DRINK", squareId: sq.id });
-                      close();
-                    }}
-                  >
-                    {sq.name}
-                  </button>
-                </li>
-              ))}
+              {mortgageable.map((sq) => {
+                const price = "price" in sq ? sq.price : 0;
+                const grant = calcMortgageExemption(price);
+                const debt = Math.ceil(grant * 1.1);
+                return (
+                  <li key={sq.id}>
+                    <button
+                      className="secondary-button"
+                      onClick={() => {
+                        dispatch({ type: "MORTGAGE_FOR_DRINK", squareId: sq.id });
+                        close();
+                      }}
+                    >
+                      {sq.name}(免除権+{grant}u / 返済{debt}u)
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
             <button className="small-button" onClick={() => setMode("main")}>
               戻る

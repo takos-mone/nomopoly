@@ -71,7 +71,7 @@ export interface Player {
   name: string;
   position: number; // square index 0-39
   totalUnitsDrunk: number; // 記録用の累計飲酒量(演出・スコア用途)
-  voucherUnits: number; // GOで得た「割引権」の残高
+  exemptionUnits: number; // 「免除権」の残高(GO通過や抵当入れで得る)。飲みが発生した時に自分の意思で使うか選べる
   skipNextTurn: boolean;
   eliminated: boolean;
   deferredDrinks: number[]; // 「後で飲む」に回した分の一覧(unit)
@@ -96,6 +96,13 @@ export interface PendingDrink {
   reason: string;
   /** 抵当返済のための飲みである場合、完済対象のマスID */
   repaySquareId?: number;
+}
+
+/** カード効果で「指名」が必要な場合の選択待ち状態 */
+export interface PendingTargetChoice {
+  cardName: string;
+  effect: CardEffect;
+  currentPlayerId: number;
 }
 
 export interface LogEntry {
@@ -124,6 +131,7 @@ export interface GameState {
   lastDice: [number, number] | null;
   pendingPurchase: { squareId: number; price: number } | null;
   pendingDrink: PendingDrink | null;
+  pendingTargetChoice: PendingTargetChoice | null;
   /** 現在処理中のカードの、まだ適用していない残り効果(1枚のカードが複数人に飲ませる場合の待ち行列) */
   pendingCardQueue: CardEffect[];
   pendingCardName: string | null;

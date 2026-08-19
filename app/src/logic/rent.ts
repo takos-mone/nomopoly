@@ -1,28 +1,24 @@
-import type { ColorGroup } from "../types";
-
-/** docs/board-pricing.md 0章の式に対応 */
+/**
+ * docs/board-pricing.md 0章の式に対応(v2バランス調整版)。
+ * v1からの変更点: 最初の訪問(landAlone)の飲酒量を引き上げ、改装費を価格連動の
+ * 低めの式に変更し、土地購入価格そのものも全体的に引き下げた。
+ */
 export const RENT_MULTIPLIER = {
-  landAlone: 0.2,
-  landMonopoly: 0.4,
-  lv1: 0.5,
-  lv2: 1.0,
+  landAlone: 0.4,
+  landMonopoly: 0.6,
+  lv1: 0.8,
+  lv2: 1.3,
   lv3: 2.0,
-  lv4: 3.0,
-  max: 4.5,
+  lv4: 2.8,
+  max: 4.0,
 } as const;
 
 export type RentTier = keyof typeof RENT_MULTIPLIER;
 
-export const BUILD_COST_BY_GROUP: Record<ColorGroup, number> = {
-  brown: 3,
-  lightblue: 3,
-  pink: 5,
-  orange: 5,
-  red: 7,
-  yellow: 7,
-  green: 9,
-  darkblue: 9,
-};
+/** 改装費(1レベルあたり)。価格の25%、最低1unit */
+export function calcBuildCost(price: number): number {
+  return Math.max(1, Math.round(price * 0.25));
+}
 
 /** 店舗レベル(0=土地のみ,1-4=Lv1-4,5=最大Lv)からレント算出用のtierを決める */
 export function tierFromLevel(level: number, isMonopolyOwned: boolean): RentTier {
@@ -47,15 +43,23 @@ export const CONVENIENCE_RENT_BY_COUNT: Record<number, number> = {
   4: 16,
 };
 
-/** タクシー会社・送迎バス会社(電力/水道相当): 所有種類数(1-2)に応じた固定飲酒量 */
-export const UTILITY_RENT_BY_COUNT: Record<number, number> = {
-  1: 3,
-  2: 8,
-};
+/**
+ * タクシー会社・送迎バス会社(電力/水道相当): 到着時にサイコロを1個振り、
+ * 出た目の数だけ飲む(2種類とも所有されていれば×2)。
+ */
+export function calcUtilityRent(ownedCount: number, dieRoll: number): number {
+  const multiplier = ownedCount >= 2 ? 2 : 1;
+  return dieRoll * multiplier;
+}
 
-/** GOマス通過/到達で得る割引権(voucher)unit */
-export const GO_PASS_VOUCHER = 3;
-export const GO_LAND_VOUCHER = 5;
+/** GOマス通過/到達で得る免除権(exemption)unit */
+export const GO_PASS_EXEMPTION = 3;
+export const GO_LAND_EXEMPTION = 5;
+
+/** 抵当に入れた際、購入価格の半額を免除権として得る */
+export function calcMortgageExemption(price: number): number {
+  return Math.floor(price / 2);
+}
 
 export interface RentBreakdownRow {
   tier: RentTier;

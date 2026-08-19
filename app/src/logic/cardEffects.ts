@@ -29,6 +29,48 @@ function resolveTargetId(state: GameState, target: CardTarget, currentPlayerId: 
   return ranked[0].id;
 }
 
+function resolveDuel(
+  state: GameState,
+  currentPlayerId: number,
+  opponentId: number,
+  amount: number,
+  cardName: string,
+): GameState {
+  const currentPlayer = state.players.find((p) => p.id === currentPlayerId)!;
+  const opponent = state.players.find((p) => p.id === opponentId)!;
+  const currentWins = Math.random() < 0.5;
+  const winner = currentWins ? currentPlayer : opponent;
+  const loser = currentWins ? opponent : currentPlayer;
+  const logged = pushLog(
+    state.log,
+    state.turn,
+    currentPlayerId,
+    `「${cardName}」: ${currentPlayer.name} vs ${opponent.name} → ${winner.name}の勝ち。`,
+  );
+  return createPendingDrink({ ...state, log: logged }, loser.id, amount, `カード「${cardName}」の敗北`);
+}
+
+/**
+ * 指名待ち(pendingTargetChoice)が解消された後、選ばれた対象で効果を完了させる。
+ */
+export function resolveChosenTarget(
+  state: GameState,
+  effect: CardEffect,
+  currentPlayerId: number,
+  chosenPlayerId: number,
+  cardName: string,
+): GameState {
+  if (effect.kind === "drink") {
+    return createPendingDrink(state, chosenPlayerId, effect.amount, `カード「${cardName}」`, {
+      sourcePlayerId: chosenPlayerId !== currentPlayerId ? currentPlayerId : undefined,
+    });
+  }
+  if (effect.kind === "duel") {
+    return resolveDuel(state, currentPlayerId, chosenPlayerId, effect.amount, cardName);
+  }
+  return state;
+}
+
 /** 単一の効果を適用する。pendingDrinkがセットされた場合は blocked:true を返す */
 function applySingleEffect(
   state: GameState,
@@ -40,6 +82,13 @@ function applySingleEffect(
 
   switch (effect.kind) {
     case "drink": {
+      if (effect.target === "choose") {
+        const next: GameState = {
+          ...state,
+          pendingTargetChoice: { cardName, effect, currentPlayerId },
+        };
+        return { state: next, blocked: true };
+      }
       const targetId = resolveTargetId(state, effect.target, currentPlayerId);
       const next = createPendingDrink(state, targetId, effect.amount, `カード「${cardName}」`, {
         sourcePlayerId: targetId !== currentPlayerId ? currentPlayerId : undefined,
@@ -53,33 +102,31 @@ function applySingleEffect(
       return { state: { ...state, players, log }, blocked: false };
     }
 
-    case "voucher": {
+    case "exemption": {
       const targetId = resolveTargetId(state, effect.target, currentPlayerId);
       const targetName = state.players.find((p) => p.id === targetId)!.name;
-      const players = state.players.map((p) => (p.id === targetId ? { ...p, voucherUnits: p.voucherUnits + effect.amount } : p));
-      const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で${targetName}の割引権+${effect.amount}。`);
+      const players = state.players.map((p) => (p.id === targetId ? { ...p, exemptionUnits: p.exemptionUnits + effect.amount } : p));
+      const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で${targetName}の免除権+${effect.amount}。`);
       return { state: { ...state, players, log }, blocked: false };
     }
 
-    case "allVoucher": {
-      const players = state.players.map((p) => ({ ...p, voucherUnits: p.voucherUnits + effect.amount }));
-      const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で全員の割引権+${effect.amount}。`);
+    case "allExemption": {
+      const players = state.players.map((p) => ({ ...p, exemptionUnits: p.exemptionUnits + effect.amount }));
+      const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で全員の免除権+${effect.amount}。`);
       return { state: { ...state, players, log }, blocked: false };
     }
 
     case "duel": {
+      if (effect.chooseOpponent) {
+        const next: GameState = {
+          ...state,
+          pendingTargetChoice: { cardName, effect, currentPlayerId },
+        };
+        return { state: next, blocked: true };
+      }
       const others = state.players.filter((p) => p.id !== currentPlayerId);
       const opponent = others[Math.floor(Math.random() * others.length)];
-      const currentWins = Math.random() < 0.5;
-      const winner = currentWins ? currentPlayer : opponent;
-      const loser = currentWins ? opponent : currentPlayer;
-      const logged = pushLog(
-        state.log,
-        state.turn,
-        currentPlayerId,
-        `「${cardName}」: ${currentPlayer.name} vs ${opponent.name} → ${winner.name}の勝ち。`,
-      );
-      const next = createPendingDrink({ ...state, log: logged }, loser.id, effect.amount, `カード「${cardName}」の敗北`);
+      const next = resolveDuel(state, currentPlayerId, opponent.id, effect.amount, cardName);
       return { state: next, blocked: next.pendingDrink !== null };
     }
 
@@ -87,9 +134,9 @@ function applySingleEffect(
       const heads = Math.random() < 0.5;
       if (heads) {
         const players = state.players.map((p) =>
-          p.id === currentPlayerId ? { ...p, voucherUnits: p.voucherUnits + effect.winVoucher } : p,
+          p.id === currentPlayerId ? { ...p, exemptionUnits: p.exemptionUnits + effect.winExemption } : p,
         );
-        const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 表!割引権+${effect.winVoucher}。`);
+        const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 表!免除権+${effect.winExemption}。`);
         return { state: { ...state, players, log }, blocked: false };
       }
       const logged = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 裏...`);

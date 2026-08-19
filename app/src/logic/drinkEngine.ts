@@ -12,8 +12,8 @@ export function pushLog(log: LogEntry[], turn: number, playerId: number, message
 
 /**
  * 飲みイベントを発生させる唯一の入り口。
- * 倍率(倍プッシュ/今夜は無礼講)・シールド(今日は休み)・割引権を順に適用し、
- * 最終的に残った量があれば pendingDrink をセットして確認ポップアップへ渡す。
+ * 倍率(倍プッシュ/今夜は無礼講)・シールド(今日は休み)を適用したうえで pendingDrink をセットし、
+ * 確認ポップアップへ渡す。免除権を使うかどうかはポップアップ側でプレイヤー自身が選ぶ(自動消費しない)。
  * sourcePlayerId が指定された場合、その人物の outgoingMultiplier も加味する(カード効果のみ)。
  */
 export function createPendingDrink(
@@ -48,19 +48,6 @@ export function createPendingDrink(
     log = pushLog(log, state.turn, targetId, `「倍プッシュ」で飲酒量が×${target.incomingMultiplier}に。`);
     amount = Math.round(amount * target.incomingMultiplier);
     players = players.map((p) => (p.id === targetId ? { ...p, incomingMultiplier: 1 } : p));
-  }
-
-  const targetNow = players.find((p) => p.id === targetId)!;
-  const voucherUsed = Math.min(targetNow.voucherUnits, amount);
-  if (voucherUsed > 0) {
-    amount -= voucherUsed;
-    players = players.map((p) => (p.id === targetId ? { ...p, voucherUnits: p.voucherUnits - voucherUsed } : p));
-    log = pushLog(log, state.turn, targetId, `割引権${voucherUsed} unitを使用して軽減。`);
-  }
-
-  if (amount <= 0) {
-    log = pushLog(log, state.turn, targetId, `${reason}: 割引権で全額相殺した!`);
-    return { ...state, players, log };
   }
 
   log = pushLog(log, state.turn, targetId, `${reason}: ${amount} unit飲む必要がある。`);

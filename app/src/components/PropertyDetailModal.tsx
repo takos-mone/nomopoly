@@ -1,12 +1,6 @@
 import { COLOR_GROUP_LABEL } from "../data/board";
 import { PLAYER_COLORS } from "../data/playerColors";
-import {
-  BUILD_COST_BY_GROUP,
-  CONVENIENCE_RENT_BY_COUNT,
-  UTILITY_RENT_BY_COUNT,
-  getPropertyRentBreakdown,
-  tierFromLevel,
-} from "../logic/rent";
+import { CONVENIENCE_RENT_BY_COUNT, calcBuildCost, getPropertyRentBreakdown, tierFromLevel } from "../logic/rent";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState, Square } from "../types";
 import { Modal } from "./Modal";
@@ -24,7 +18,7 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isMyTurn = state.phase === "playing" && owner?.id === currentPlayer?.id;
   const mortgage = state.mortgages[square.id];
-  const blocked = !!state.pendingPurchase || !!state.pendingDrink;
+  const blocked = !!state.pendingPurchase || !!state.pendingDrink || !!state.pendingTargetChoice;
 
   return (
     <Modal title={square.name} onClose={onClose}>
@@ -37,7 +31,7 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
               <dt>購入価格</dt>
               <dd>{square.price} unit</dd>
               <dt>次のレベルへの改装費</dt>
-              <dd>{BUILD_COST_BY_GROUP[square.colorGroup]} unit / 回</dd>
+              <dd>{calcBuildCost(square.price)} unit / 回</dd>
               {mortgage && (
                 <>
                   <dt>抵当返済額</dt>
@@ -61,7 +55,7 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
                 className="primary-button"
                 onClick={() => dispatch({ type: "BUILD_SHOP", squareId: square.id })}
               >
-                改装する (+{BUILD_COST_BY_GROUP[square.colorGroup]} unit)
+                改装する (+{calcBuildCost(square.price)} unit)
               </button>
             )}
             {isMyTurn && mortgage && !blocked && (
@@ -124,13 +118,10 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
               <p className="detail-modal__empty">抵当中のため家賃は発生しません。</p>
             ) : (
               <>
-                <h3>訪問時に飲む量(所有種類数別)</h3>
+                <h3>訪問時に飲む量</h3>
                 <ul className="detail-modal__count-table">
-                  {Object.entries(UTILITY_RENT_BY_COUNT).map(([count, amount]) => (
-                    <li key={count}>
-                      {count}種類所有: {amount} unit
-                    </li>
-                  ))}
+                  <li>到着時にサイコロを1個振り、出た目の数だけ飲む(例: 3の目 → 3 unit)</li>
+                  <li>タクシー会社・送迎バス会社を2種類とも所有していれば出た目 ×2</li>
                 </ul>
               </>
             )}
@@ -143,7 +134,7 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
         )}
 
         {square.type === "tax" && <p>ここに止まると場に {square.amount} unit 支払う(誰も得しない)。</p>}
-        {square.type === "go" && <p>通過するたびに割引権を獲得できるマス。</p>}
+        {square.type === "go" && <p>通過するたびに免除権を獲得できるマス。</p>}
         {square.type === "jail" && <p>通過は素通り。「終電を逃した」で送られてきた場合のみ1ターン休み。</p>}
         {square.type === "freeParking" && <p>何も起きない休憩マス。</p>}
         {square.type === "goToJail" && <p>止まると即座にタクシー待機所へ移動し、1ターン休み。</p>}

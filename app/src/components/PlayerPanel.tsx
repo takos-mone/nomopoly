@@ -43,7 +43,7 @@ export function PlayerPanel({ state, onSelectPlayer }: PlayerPanelProps) {
                   {p.eliminated && <span className="player-list__eliminated-badge">脱落</span>}
                 </div>
                 <div className="player-list__stats">
-                  現在地: {state.squares[p.position].name} / 累計飲酒量: {p.totalUnitsDrunk}u / 割引権: {p.voucherUnits}u
+                  現在地: {state.squares[p.position].name} / 累計飲酒量: {p.totalUnitsDrunk}u / 免除権: {p.exemptionUnits}u
                 </div>
                 <div className="player-list__hint">所有物件 {ownedCount}件(タップで詳細)</div>
               </button>

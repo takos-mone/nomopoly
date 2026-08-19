@@ -149,7 +149,6 @@
   box-shadow: none;
 }
 
-.dice-controls,
 .player-panel,
 .event-log {
   background: var(--panel);
@@ -158,11 +157,6 @@
   text-align: left;
   box-shadow: var(--shadow-soft);
   border: 1px solid var(--border);
-}
-
-.dice-controls {
-  width: 100%;
-  text-align: center;
 }
 
 .dice-tray {
@@ -209,17 +203,22 @@
 
 .purchase-prompt {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   background: rgba(227, 160, 56, 0.12);
   border: 1px dashed var(--gold);
   border-radius: 12px;
   padding: 12px;
 }
 
+.purchase-prompt p {
+  margin: 0 0 2px;
+}
+
 .dice-actions {
   display: flex;
+  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -338,10 +337,6 @@
   }
 
   .app-layout__sidebar {
-    width: 100%;
-  }
-
-  .dice-controls {
     width: 100%;
   }
 }

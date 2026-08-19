@@ -1,7 +1,7 @@
-import type { GameState } from "../types";
+import type { ReactNode } from "react";
+import type { CardDrawEvent, GameState } from "../types";
 import { COLOR_GROUP_HEX } from "../data/board";
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
-import { useTokenAnimation } from "../hooks/useTokenAnimation";
 import { squareGridPosition } from "../logic/layout";
 import { CardDrawOverlay } from "./CardDrawOverlay";
 import "./Board.css";
@@ -9,11 +9,12 @@ import "./Board.css";
 interface BoardProps {
   state: GameState;
   onSelectSquare: (squareId: number) => void;
+  visualPositions: Record<number, number>;
+  cardDraw: CardDrawEvent | null;
+  overlay?: ReactNode;
 }
 
-export function Board({ state, onSelectSquare }: BoardProps) {
-  const visualPositions = useTokenAnimation(state.players, state.squares.length);
-
+export function Board({ state, onSelectSquare, visualPositions, cardDraw, overlay }: BoardProps) {
   return (
     <div className="board-grid">
       {state.squares.map((square) => {
@@ -74,8 +75,9 @@ export function Board({ state, onSelectSquare }: BoardProps) {
             <span>共同基金</span>
           </div>
         </div>
-        <CardDrawOverlay cardDraw={state.lastCardDraw} />
+        <CardDrawOverlay cardDraw={cardDraw} />
       </div>
+      {overlay}
     </div>
   );
 }
