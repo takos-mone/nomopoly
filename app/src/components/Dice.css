@@ -1,0 +1,47 @@
+.dice-face {
+  width: clamp(52px, 14vw, 72px);
+  height: clamp(52px, 14vw, 72px);
+  background: #fffdf7;
+  border-radius: 14px;
+  border: 2px solid var(--ink);
+  box-shadow: 0 3px 0 var(--ink), var(--shadow-soft);
+  padding: 6px;
+  transition: transform 0.08s ease;
+  flex-shrink: 0;
+}
+
+.dice-face--spinning {
+  animation: dice-spin 0.35s linear infinite;
+}
+
+@keyframes dice-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(8deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(-8deg) scale(1);
+  }
+}
+
+.dice-face__grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+}
+
+.dice-face__pip {
+  width: 65%;
+  height: 65%;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.dice-face__pip--on {
+  background: var(--noren);
+}

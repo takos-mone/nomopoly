@@ -56,3 +56,30 @@ export const UTILITY_RENT_BY_COUNT: Record<number, number> = {
 /** GOマス通過/到達で得る割引権(voucher)unit */
 export const GO_PASS_VOUCHER = 3;
 export const GO_LAND_VOUCHER = 5;
+
+export interface RentBreakdownRow {
+  tier: RentTier;
+  label: string;
+  amount: number;
+}
+
+const RENT_TIER_LABELS: Record<RentTier, string> = {
+  landAlone: "土地のみ",
+  landMonopoly: "土地のみ(グループ独占)",
+  lv1: "Lv.1店舗",
+  lv2: "Lv.2店舗",
+  lv3: "Lv.3店舗",
+  lv4: "Lv.4店舗",
+  max: "最大レベル",
+};
+
+const RENT_TIER_ORDER: RentTier[] = ["landAlone", "landMonopoly", "lv1", "lv2", "lv3", "lv4", "max"];
+
+/** 物件の全レベルの賃料早見表を返す(PropertyDetailModal / PlayerDetailModal共通) */
+export function getPropertyRentBreakdown(price: number): RentBreakdownRow[] {
+  return RENT_TIER_ORDER.map((tier) => ({
+    tier,
+    label: RENT_TIER_LABELS[tier],
+    amount: Math.max(1, Math.round(price * RENT_MULTIPLIER[tier])),
+  }));
+}

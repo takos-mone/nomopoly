@@ -87,6 +87,13 @@ export interface LogEntry {
   message: string;
 }
 
+export type CardPileType = "chance" | "communityChest";
+
+export interface CardDrawEvent {
+  pile: CardPileType;
+  seq: number;
+}
+
 export interface GameState {
   players: Player[];
   currentPlayerIndex: number;
@@ -97,5 +104,6 @@ export interface GameState {
   log: LogEntry[];
   lastDice: [number, number] | null;
   pendingPurchase: { squareId: number; price: number } | null;
+  lastCardDraw: CardDrawEvent | null;
   phase: "setup" | "playing" | "finished";
 }

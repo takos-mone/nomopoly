@@ -60,3 +60,14 @@ export const COLOR_GROUP_HEX: Record<string, string> = {
   green: "#4caf82",
   darkblue: "#2a5cb8",
 };
+
+export const COLOR_GROUP_LABEL: Record<string, string> = {
+  brown: "裏路地せんべろ横丁",
+  lightblue: "立ち飲みストリート",
+  pink: "もつ鍋横丁",
+  orange: "サラリーマン天国横丁",
+  red: "焼肉横丁",
+  yellow: "クラブ通り",
+  green: "高級和食街",
+  darkblue: "銀座クラブ通り",
+};

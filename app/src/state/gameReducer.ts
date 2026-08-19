@@ -24,6 +24,12 @@ function nextLogId(): number {
   return logSeq;
 }
 
+let cardDrawSeq = 0;
+function nextCardDrawSeq(): number {
+  cardDrawSeq += 1;
+  return cardDrawSeq;
+}
+
 export function createInitialState(): GameState {
   return {
     players: [],
@@ -35,6 +41,7 @@ export function createInitialState(): GameState {
     log: [],
     lastDice: null,
     pendingPurchase: null,
+    lastCardDraw: null,
     phase: "setup",
   };
 }
@@ -85,9 +92,11 @@ function resolveLanding(state: GameState): GameState {
     next = { ...next, players: updatedPlayers };
     log(`${square.name}: ${square.amount} unit支払う。`);
   } else if (square.type === "chance") {
-    log("チャンスカードを引く(カード効果は今後実装)。");
+    next = { ...next, lastCardDraw: { pile: "chance", seq: nextCardDrawSeq() } };
+    log("チャンスカードを引いた(カード効果は今後実装)。");
   } else if (square.type === "communityChest") {
-    log("共同基金カードを引く(カード効果は今後実装)。");
+    next = { ...next, lastCardDraw: { pile: "communityChest", seq: nextCardDrawSeq() } };
+    log("共同基金カードを引いた(カード効果は今後実装)。");
   } else if (square.type === "jail") {
     log("タクシー待機所を見学中(効果なし)。");
   } else if (square.type === "freeParking") {
