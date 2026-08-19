@@ -55,6 +55,7 @@ export function createInitialState(): GameState {
     pendingTargetChoice: null,
     pendingCardQueue: [],
     pendingCardName: null,
+    pendingLandingResolution: false,
     lastCardDraw: null,
     phase: "setup",
   };
@@ -114,11 +115,11 @@ function resolveLanding(state: GameState): GameState {
   } else if (square.type === "chance") {
     next = { ...next, lastCardDraw: { pile: "chance", seq: nextCardDrawSeq() } };
     const card = drawRandomCard("chance");
-    next = drawAndApplyCard(next, card, player.id);
+    next = finalizeCardResolution(drawAndApplyCard(next, card, player.id));
   } else if (square.type === "communityChest") {
     next = { ...next, lastCardDraw: { pile: "communityChest", seq: nextCardDrawSeq() } };
     const card = drawRandomCard("communityChest");
-    next = drawAndApplyCard(next, card, player.id);
+    next = finalizeCardResolution(drawAndApplyCard(next, card, player.id));
   } else if (square.type === "jail") {
     log("タクシー待機所を見学中(効果なし)。");
   } else if (square.type === "freeParking") {
@@ -148,12 +149,26 @@ function calcRentFor(state: GameState, square: PropertySquare | ConvenienceSquar
   return CONVENIENCE_RENT_BY_COUNT[ownedCount] ?? 2;
 }
 
-/** pendingDrink/pendingTargetChoiceが解消された後、カード効果の残りキューがあれば続きを処理する */
-function continueCardQueueIfAny(state: GameState): GameState {
-  if (state.pendingDrink || state.pendingTargetChoice) return state;
-  if (state.pendingCardQueue.length === 0) return state;
-  const player = currentPlayer(state);
-  return processCardEffectQueue(state, state.pendingCardQueue, player.id, state.pendingCardName ?? "カード");
+/**
+ * pendingDrink/pendingTargetChoiceが解消された後の後始末をまとめて行う:
+ * 1. カード効果の残りキューがあれば続きを処理する
+ * 2. それでも保留がなく、カードの移動効果で着地マスの解決が必要なら resolveLanding を連鎖させる
+ */
+function finalizeCardResolution(state: GameState): GameState {
+  let next = state;
+  if (next.pendingDrink || next.pendingTargetChoice) return next;
+
+  if (next.pendingCardQueue.length > 0) {
+    const player = currentPlayer(next);
+    next = processCardEffectQueue(next, next.pendingCardQueue, player.id, next.pendingCardName ?? "カード");
+    if (next.pendingDrink || next.pendingTargetChoice) return next;
+  }
+
+  if (next.pendingLandingResolution) {
+    next = resolveLanding({ ...next, pendingLandingResolution: false });
+  }
+
+  return next;
 }
 
 function baseReducer(state: GameState, action: GameAction): GameState {
@@ -325,7 +340,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         log = pushLog(log, state.turn, playerId, `${state.squares[repaySquareId].name}の抵当を完済した。`);
       }
       const next: GameState = { ...state, players, mortgages, log, pendingDrink: null };
-      return continueCardQueueIfAny(next);
+      return finalizeCardResolution(next);
     }
 
     case "DEFER_DRINK": {
@@ -342,7 +357,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         `${player.name}は${amount} unitを「後で飲む」に先送りした。`,
       );
       const next: GameState = { ...state, players, log, pendingDrink: null };
-      return continueCardQueueIfAny(next);
+      return finalizeCardResolution(next);
     }
 
     case "MORTGAGE_FOR_DRINK": {
@@ -373,7 +388,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       if (remaining <= 0) {
         log = pushLog(log, state.turn, playerId, `${reason}を全額免除した!`);
         const next: GameState = { ...state, players, mortgages, log, pendingDrink: null };
-        return continueCardQueueIfAny(next);
+        return finalizeCardResolution(next);
       }
       return {
         ...state,
@@ -398,7 +413,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       if (remaining <= 0) {
         log = pushLog(log, state.turn, playerId, `${reason}: 免除権で全額相殺した!`);
         const next: GameState = { ...state, players, log, pendingDrink: null };
-        return continueCardQueueIfAny(next);
+        return finalizeCardResolution(next);
       }
       return {
         ...state,
@@ -433,7 +448,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       const player = state.players.find((p) => p.id === playerId)!;
       const log = pushLog(state.log, state.turn, playerId, `${player.name}は罰ゲームで飲みの代わりとした。`);
       const next: GameState = { ...state, log, pendingDrink: null };
-      return continueCardQueueIfAny(next);
+      return finalizeCardResolution(next);
     }
 
     case "RESOLVE_DEFERRED": {
@@ -473,7 +488,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       const { cardName, effect, currentPlayerId } = state.pendingTargetChoice;
       const cleared: GameState = { ...state, pendingTargetChoice: null };
       const next = resolveChosenTarget(cleared, effect, currentPlayerId, action.playerId, cardName);
-      return continueCardQueueIfAny(next);
+      return finalizeCardResolution(next);
     }
 
     default:

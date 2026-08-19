@@ -154,7 +154,7 @@ function applySingleEffect(
         currentPlayerId,
         `「${cardName}」で${state.squares[newPos].name}へ移動。`,
       );
-      return { state: { ...state, players, log }, blocked: false };
+      return { state: { ...state, players, log, pendingLandingResolution: true }, blocked: false };
     }
 
     case "moveToOwned": {
@@ -166,7 +166,7 @@ function applySingleEffect(
       const target = owned[Math.floor(Math.random() * owned.length)];
       const players = state.players.map((p) => (p.id === currentPlayerId ? { ...p, position: target.id } : p));
       const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で自分の物件「${target.name}」へワープ。`);
-      return { state: { ...state, players, log }, blocked: false };
+      return { state: { ...state, players, log, pendingLandingResolution: true }, blocked: false };
     }
 
     case "extraRoll": {

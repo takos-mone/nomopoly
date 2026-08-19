@@ -135,6 +135,8 @@ export interface GameState {
   /** 現在処理中のカードの、まだ適用していない残り効果(1枚のカードが複数人に飲ませる場合の待ち行列) */
   pendingCardQueue: CardEffect[];
   pendingCardName: string | null;
+  /** カード効果で移動した後、着地マスの家賃・購入・カード効果を連鎖解決する必要があるか */
+  pendingLandingResolution: boolean;
   lastCardDraw: CardDrawEvent | null;
   phase: "setup" | "playing" | "finished";
 }
