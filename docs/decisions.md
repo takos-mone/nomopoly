@@ -6,7 +6,11 @@
 ## 0. ゲーム名・リリース方針
 
 - **ゲーム名: 「飲もポリー」**(モノポリー×飲みゲー)。`app/` 配下のタイトル・package.json名に反映済み。
-- **リリース形態: 簡単なwebappとして公開**。同一端末パス&プレイ・サーバー不要の構成のため、静的ビルド(`npm run build`)をそのまま静的ホスティングへ配置すればよい。具体的なホスティング先は未確定(下記参照)。
+- **リリース形態: 簡単なwebappとして公開 → 完了**。GitHub Pagesで公開中。
+  - リポジトリ: https://github.com/takos-mone/nomopoly
+  - 公開URL: https://takos-mone.github.io/nomopoly/
+  - `main` ブランチへのpushで `.github/workflows/deploy.yml` が自動ビルド・デプロイ(`npm run build` → GitHub Pages)。
+  - 公開方針: 現状のコアループ(盤面・サイコロ・移動・購入・賃料・税金・GO/タクシー待機所・改装)で先行公開。カード効果・指名システム・脱落/勝利判定は今後のアップデートで追加。
 
 ## 1. 土台となるアーキテクチャ決定
 
