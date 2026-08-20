@@ -1,7 +1,12 @@
 /**
  * マスに止まったときに出す軽い説明文。
- * 「今どのマスにいて、これから何が起きるのか」を1〜2行で伝えることだけが目的で、
+ * 「今どのマスにいて、これから何が起きるのか」を伝えることだけが目的で、
  * 実際の効果適用は reducer 側が行う(ここは表示専用)。
+ *
+ * 「持ち主は飲み代の半分を免除権として得る」「独占で1.5倍」「免除権の使い方」
+ * といったゲーム共通のルールは遊び方モーダルで一度だけ説明しており、
+ * ここで毎回繰り返すと通知が長くなるだけなので書かない。ここはそのマス固有の
+ * 事実(誰の持ち物か・いくら飲むか・何が起きるか)だけを簡潔に伝える。
  */
 import type { GameState, Square } from "../types";
 import { isOwnable } from "../types";
@@ -10,7 +15,7 @@ import { CONVENIENCE_RENT_BY_COUNT } from "./rent";
 export interface SquareInfo {
   /** マス種別のラベル(バッジ表示用) */
   kind: string;
-  /** 1〜2行の説明 */
+  /** 簡潔な説明 */
   body: string;
 }
 
@@ -38,49 +43,44 @@ export function describeSquare(state: GameState, square: Square, playerId: numbe
     const owner = ownerId !== undefined ? state.players.find((p) => p.id === ownerId) : undefined;
 
     if (owner && state.mortgages[square.id]) {
-      return { kind, body: `${owner.name}の物件だが抵当に入っているため、飲み代は発生しない。` };
+      return { kind, body: `${owner.name}の物件(抵当中)。` };
     }
     if (owner && owner.id === playerId) {
-      return { kind, body: "自分の物件。飲み代は発生しない。改装してレベルを上げると飲み代が上がる。" };
+      return { kind, body: "自分の物件。" };
     }
     if (owner) {
-      const income = `${owner.name}は飲み代の半分だけ免除権をもらえる。`;
       if (square.type === "utility") {
-        return { kind, body: `${owner.name}の交通機関。サイコロを1個振り、出た目のぶん飲む(2種類独占されていると×2)。${income}` };
+        return { kind, body: `${owner.name}の交通機関。サイコロの目のぶん飲む(2種類独占で×2)。` };
       }
       if (square.type === "convenience") {
-        return { kind, body: `${owner.name}のコンビニ。同じ持ち主が持っている軒数が多いほど飲み代が上がる。${income}` };
+        return { kind, body: `${owner.name}のコンビニ。所有軒数に応じて飲み代が変わる。` };
       }
-      return { kind, body: `${owner.name}の店。店舗レベルに応じた飲み代を飲む。同じ色を独占されていると飲み代は1.5倍。${income}` };
+      return { kind, body: `${owner.name}の店。店舗レベルに応じて飲む。` };
     }
 
     // 未所有
-    const income = "他の人が止まると、飲み代の半分だけ免除権が手に入る。";
-    if (square.type === "utility") {
-      return { kind, body: `未所有。${square.price} unit飲んで購入できる。止まった人はサイコロの目のぶん飲む。${income}` };
-    }
     if (square.type === "convenience") {
       const max = CONVENIENCE_RENT_BY_COUNT[4];
-      return { kind, body: `未所有。${square.price} unit飲んで購入できる。4軒すべて揃えると飲み代は${max} unitまで上がる。${income}` };
+      return { kind, body: `未所有。${square.price} unitで購入可(最大${max} unit)。` };
     }
-    return { kind, body: `未所有。${square.price} unit飲んで購入できる。改装で飲み代を上げられる。${income}` };
+    return { kind, body: `未所有。${square.price} unitで購入可。` };
   }
 
   switch (square.type) {
     case "go":
-      return { kind, body: "GO(自宅)。盤面を1周するたびに免除権+2 unitがもらえる。" };
+      return { kind, body: "免除権+2(1周ごと)。" };
     case "tax":
-      return { kind, body: `${square.amount} unit飲む。誰の収入にもならない。` };
+      return { kind, body: `${square.amount} unit飲む。` };
     case "chance":
-      return { kind, body: "チャンスカードを1枚引く。誰かに飲ませたり、移動したり、当たり外れが大きい。" };
+      return { kind, body: "チャンスカードを引く。" };
     case "communityChest":
-      return { kind, body: "共同基金カードを1枚引く。全員に影響するものや、救済系が多い。" };
+      return { kind, body: "共同基金カードを引く。" };
     case "jail":
-      return { kind, body: "タクシー待機所。ここに止まっただけなら何も起きない(見学中)。" };
+      return { kind, body: "見学中(効果なし)。" };
     case "freeParking":
-      return { kind, body: "喫煙所。何も起きない。ひと息つこう。" };
+      return { kind, body: "効果なし。" };
     case "goToJail":
-      return { kind, body: "終電を逃した!タクシー待機所へ強制移動し、次のターンは休みになる。" };
+      return { kind, body: "タクシー待機所へ強制移動。" };
     default:
       return { kind, body: "" };
   }

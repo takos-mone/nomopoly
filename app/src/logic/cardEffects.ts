@@ -423,7 +423,7 @@ function applySingleEffect(
         toSquareId: JAIL_SQUARE_ID,
         skipTurns: 3,
         title: "職務質問…",
-        detail: `${currentPlayer.name}はタクシー待機所へ送られた。GOは通過扱いにならない。`,
+        detail: `${currentPlayer.name}はタクシー待機所へ(GO通過なし)。`,
       });
       return { state: next, blocked: false };
     }
@@ -438,7 +438,7 @@ function applySingleEffect(
         currentPlayerId,
         "🎟️",
         "タクシーチケット +1",
-        "タクシー待機所で休み中に使うと、飲まずにすぐ抜け出せる(使い捨て)。",
+        "休み中に使うと即脱出(使い捨て)。",
       );
       return { state: gained, blocked: false };
     }
@@ -578,7 +578,7 @@ export function applyFreeUpgrade(
     currentPlayerId,
     "🏗️",
     `${square.name} が${levelLabel}に!`,
-    `「${cardName}」で無料改装。飲み代が上がった。`,
+    `「${cardName}」で無料改装。`,
   );
 }
 

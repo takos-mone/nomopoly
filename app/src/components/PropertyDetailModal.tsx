@@ -60,13 +60,11 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
                   monopoly={monopoly}
                   currentTier={owner ? tierFromLevel(state.shopLevel[square.id] ?? 0) : undefined}
                 />
-                <p className="detail-modal__monopoly-note">
-                  {monopoly
-                    ? `${COLOR_GROUP_LABEL[square.colorGroup]}を独占中!全レベルの飲み代が ×${MONOPOLY_RENT_MULTIPLIER} になっています。`
-                    : `同じ色の土地をすべて揃えると、全レベルの飲み代が ×${MONOPOLY_RENT_MULTIPLIER} になります。`}
-                  <br />
-                  他のプレイヤーが止まると、持ち主は飲み代の半分だけ免除権を獲得します。
-                </p>
+                {monopoly && (
+                  <p className="detail-modal__monopoly-note">
+                    {COLOR_GROUP_LABEL[square.colorGroup]}独占中(×{MONOPOLY_RENT_MULTIPLIER})
+                  </p>
+                )}
               </>
             )}
             {isMyTurn && !mortgage && (state.shopLevel[square.id] ?? 0) < 5 && !blocked && (

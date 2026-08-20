@@ -143,13 +143,7 @@ function grantRentIncome(
       `${owner.name}は${squareName}の飲み代収入として免除権+${gain}を得た。`,
     ),
   };
-  return pushGain(
-    withGain,
-    ownerId,
-    "💰",
-    `免除権 +${gain} unit`,
-    `${squareName}の飲み代(${rent} unit)の半分が${owner.name}の収入になった。`,
-  );
+  return pushGain(withGain, ownerId, "💰", `免除権 +${gain} unit`, `${squareName}の飲み代収入。`);
 }
 
 /** @param depth カード移動による着地連鎖の深さ(無限ループ防止) */
@@ -228,8 +222,8 @@ function resolveLanding(state: GameState, depth = 0): GameState {
       skipTurns,
       title: "終電を逃した!",
       detail: hasTaxi
-        ? `${player.name}はタクシー待機所へ。タクシー会社を持っているので${skipTurns}ターンで出られる。`
-        : `${player.name}はタクシー待機所へ。${skipTurns}ターン休み。${JAIL_ESCAPE_COST} unit飲めばすぐ出られる。`,
+        ? `${player.name}はタクシー待機所へ(タクシー会社所有、${skipTurns}ターン)。`
+        : `${player.name}はタクシー待機所へ(${skipTurns}ターン休み)。`,
     });
   } else if (square.type === "go") {
     log("GO(自宅)に到着!");
@@ -269,7 +263,7 @@ function advanceToNextPlayer(state: GameState): GameState {
       playerId: p.id,
       remainingTurns: p.skipTurns,
       title: `${p.name}は一回休み`,
-      detail: `タクシー待機所で待機中(残り${p.skipTurns}ターン)。${JAIL_ESCAPE_COST} unit飲めば今すぐ抜け出せる。`,
+      detail: `タクシー待機所で待機中(残り${p.skipTurns}ターン)。`,
     });
   }
   return next;
@@ -552,7 +546,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         player.id,
         "🏠",
         `${square.name} を取得!`,
-        "他のプレイヤーが止まると飲み代が発生する。改装するとさらに飲み代が上がる。",
+        "",
       );
     }
 
@@ -661,7 +655,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         playerId,
         "🎫",
         `免除権 +${grant} unit`,
-        `${square.name}を抵当に入れた。返済するまで飲み代・改装は止まる(返済${debt} unit)。`,
+        `${square.name}を抵当に入れた(返済${debt} unit)。`,
       );
       if (remaining <= 0) {
         log = pushLog(log, state.turn, playerId, `${reason}を全額免除した!`);

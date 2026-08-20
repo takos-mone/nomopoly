@@ -184,7 +184,7 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
         <Illustration pose={poseFor(notice)} size={104} className="illustration--notice" />
         <div className="notice-card__icon">{body.icon}</div>
         <h3 className="notice-card__title">{body.title}</h3>
-        <p className="notice-card__detail">{body.detail}</p>
+        {body.detail && <p className="notice-card__detail">{body.detail}</p>}
         {player && (
           <div className="notice-card__player">
             <span
