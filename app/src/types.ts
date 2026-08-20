@@ -81,7 +81,16 @@ export interface Player {
   outgoingMultiplier: number; // 次にカードで誰かに飲ませる量の倍率(今夜は無礼講)。使用後1に戻る
   /** 「タクシーチケット」の所持枚数。タクシー待機所の休みを1回ぶん帳消しにできる使い捨て */
   taxiTickets: number;
+  /** 何番目に脱落したか(1始まり)。未脱落は null。「脱落が遅い順」の順位付けに使う */
+  eliminatedOrder: number | null;
 }
+
+/**
+ * ゲームの終わり方。
+ * - lastSurvivor: 最後の1人が残るまで続ける。脱落が遅いほど上位。
+ * - firstElimination: 誰か1人が脱落した時点で終了。累計飲酒量が少ないほど上位。
+ */
+export type EndCondition = "lastSurvivor" | "firstElimination";
 
 /** マスID -> 所有プレイヤーID (未所有はundefined) */
 export type Ownership = Record<number, number | undefined>;
@@ -170,5 +179,7 @@ export interface GameState {
   pendingMoveSteps: number | null;
   /** 累計飲酒量がこのunitに達したプレイヤーは脱落する(セットアップ画面でカスタマイズ可能) */
   eliminationThreshold: number;
+  /** ゲームの終わり方(セットアップ画面で選択) */
+  endCondition: EndCondition;
   phase: "setup" | "playing" | "finished";
 }

@@ -1,13 +1,26 @@
 import { useState } from "react";
 import { DEFAULT_ELIMINATION_THRESHOLD } from "../logic/elimination";
 import { clearSavedGame, formatSavedAt, loadGame } from "../logic/persistence";
-import type { GameState } from "../types";
+import type { EndCondition, GameState } from "../types";
 import { HowToPlayModal } from "./HowToPlayModal";
 
 interface SetupScreenProps {
-  onStart: (names: string[], eliminationThreshold: number) => void;
+  onStart: (names: string[], eliminationThreshold: number, endCondition: EndCondition) => void;
   onResume: (state: GameState) => void;
 }
+
+const END_CONDITIONS: { value: EndCondition; label: string; detail: string }[] = [
+  {
+    value: "lastSurvivor",
+    label: "最後の一人まで続ける",
+    detail: "脱落が遅かった順に順位が決まる(生き残りが優勝)",
+  },
+  {
+    value: "firstElimination",
+    label: "一人脱落したら終了",
+    detail: "その時点で累計飲酒量が少なかった順に順位が決まる",
+  },
+];
 
 export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   const [count, setCount] = useState(4);
@@ -16,6 +29,7 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   // 文字列で保持する。数値で持つと入力途中("5"→"50")が即座に丸められて打ちにくいうえ、
   // 空欄(=デフォルトのまま)を表現できないため。
   const [thresholdInput, setThresholdInput] = useState("");
+  const [endCondition, setEndCondition] = useState<EndCondition>("lastSurvivor");
   // マウント時に一度だけ読み込む。破棄したら再表示しないので state で保持する。
   const [savedGame, setSavedGame] = useState(loadGame);
 
@@ -104,7 +118,36 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
         </p>
       </div>
 
-      <button className="primary-button" onClick={() => onStart(names.slice(0, count), resolvedThreshold)}>
+      <div className="setup-endcondition">
+        <span className="setup-endcondition__label">ゲームの終わり方</span>
+        {END_CONDITIONS.map((opt) => (
+          <label
+            key={opt.value}
+            className={
+              endCondition === opt.value
+                ? "setup-endcondition__option setup-endcondition__option--selected"
+                : "setup-endcondition__option"
+            }
+          >
+            <input
+              type="radio"
+              name="end-condition"
+              value={opt.value}
+              checked={endCondition === opt.value}
+              onChange={() => setEndCondition(opt.value)}
+            />
+            <span>
+              <strong>{opt.label}</strong>
+              <small>{opt.detail}</small>
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <button
+        className="primary-button"
+        onClick={() => onStart(names.slice(0, count), resolvedThreshold, endCondition)}
+      >
         ゲーム開始
       </button>
       <button type="button" className="setup-advanced-toggle" onClick={() => setShowHowTo(true)}>

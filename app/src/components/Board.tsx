@@ -57,9 +57,16 @@ export function Board({ state, onSelectSquare, visualPositions, overlay }: Board
                 {PLAYER_EMOJIS[owner.id % PLAYER_EMOJIS.length]}
               </span>
             )}
+            {/* 本家準拠: 改装1回ごとに緑の家、最大レベルで赤いホテル1軒に置き換わる */}
             {square.type === "property" && level > 0 && !mortgaged && (
-              <div className="board-square__level" style={{ background: ownerColor }}>
-                {level >= 5 ? "MAX" : `Lv${level}`}
+              <div className="board-square__buildings" title={level >= 5 ? "最大レベル(ホテル)" : `Lv${level}`}>
+                {level >= 5 ? (
+                  <span className="board-square__hotel" />
+                ) : (
+                  Array.from({ length: level }).map((_, i) => (
+                    <span key={i} className="board-square__house" />
+                  ))
+                )}
               </div>
             )}
             {mortgaged && <div className="board-square__level board-square__level--mortgaged">抵当</div>}

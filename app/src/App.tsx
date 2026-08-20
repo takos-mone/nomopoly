@@ -59,7 +59,9 @@ function App() {
   if (state.phase === "setup") {
     return (
       <SetupScreen
-        onStart={(names, eliminationThreshold) => dispatch({ type: "START_GAME", names, eliminationThreshold })}
+        onStart={(names, eliminationThreshold, endCondition) =>
+          dispatch({ type: "START_GAME", names, eliminationThreshold, endCondition })
+        }
         onResume={(saved) => dispatch({ type: "RESUME_GAME", state: saved })}
       />
     );

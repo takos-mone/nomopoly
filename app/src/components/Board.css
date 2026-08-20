@@ -138,6 +138,64 @@
   z-index: 2;
 }
 
+/* 建物マーク。マスの右下に並べる(本家の家/ホテル表現に合わせる) */
+.board-square__buildings {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-start;
+  gap: 1px;
+  max-width: 60%;
+  z-index: 2;
+}
+
+/* 緑の家: 三角屋根つきの小さな四角 */
+.board-square__house {
+  width: clamp(4px, 1.1vw, 7px);
+  height: clamp(4px, 1.1vw, 7px);
+  background: #2e9e5b;
+  border: 0.5px solid #17643a;
+  border-radius: 1px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.board-square__house::before {
+  content: "";
+  position: absolute;
+  left: -0.5px;
+  right: -0.5px;
+  bottom: 100%;
+  height: 40%;
+  background: #2e9e5b;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* 赤いホテル: 家より横長 */
+.board-square__hotel {
+  width: clamp(9px, 2.4vw, 15px);
+  height: clamp(5px, 1.3vw, 8px);
+  background: #d8443c;
+  border: 0.5px solid #8f241e;
+  border-radius: 1px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.board-square__hotel::before {
+  content: "";
+  position: absolute;
+  left: -0.5px;
+  right: -0.5px;
+  bottom: 100%;
+  height: 45%;
+  background: #d8443c;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
 .board-square__level {
   position: absolute;
   top: 2px;

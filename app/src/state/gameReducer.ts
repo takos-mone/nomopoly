@@ -12,11 +12,11 @@ import {
   calcPropertyRent,
   calcUtilityRent,
 } from "../logic/rent";
-import type { GameState, Player, PropertySquare, ConvenienceSquare } from "../types";
+import type { EndCondition, GameState, Player, PropertySquare, ConvenienceSquare } from "../types";
 import { isOwnable } from "../types";
 
 export type GameAction =
-  | { type: "START_GAME"; names: string[]; eliminationThreshold?: number }
+  | { type: "START_GAME"; names: string[]; eliminationThreshold?: number; endCondition?: EndCondition }
   /** dice は UI 側で先に出目を確定して見せてから渡す。省略時はここで振る */
   | { type: "ROLL_DICE"; dice?: [number, number] }
   | { type: "CONFIRM_PURCHASE" }
@@ -70,6 +70,7 @@ export function createInitialState(): GameState {
     notices: [],
     pendingMoveSteps: null,
     eliminationThreshold: DEFAULT_ELIMINATION_THRESHOLD,
+    endCondition: "lastSurvivor",
     phase: "setup",
   };
 }
@@ -376,6 +377,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         incomingShield: false,
         outgoingMultiplier: 1,
         taxiTickets: 0,
+        eliminatedOrder: null,
       }));
       return {
         ...createInitialState(),
@@ -383,6 +385,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         phase: "playing",
         turn: 1,
         eliminationThreshold: action.eliminationThreshold ?? DEFAULT_ELIMINATION_THRESHOLD,
+        endCondition: action.endCondition ?? "lastSurvivor",
         log: pushLog([], 1, -1, "ゲーム開始!"),
       };
     }

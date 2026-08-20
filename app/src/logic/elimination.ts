@@ -6,7 +6,11 @@ export const DEFAULT_ELIMINATION_THRESHOLD = 80;
 
 function eliminatePlayer(state: GameState, playerId: number): GameState {
   const player = state.players.find((p) => p.id === playerId)!;
-  const players = state.players.map((p) => (p.id === playerId ? { ...p, eliminated: true } : p));
+  // 何番目の脱落かを記録しておく(「脱落が遅い順」の順位付けに使う)
+  const order = state.players.filter((p) => p.eliminated).length + 1;
+  const players = state.players.map((p) =>
+    p.id === playerId ? { ...p, eliminated: true, eliminatedOrder: order } : p,
+  );
 
   const ownedSquareIds = state.squares
     .filter((sq) => state.ownership[sq.id] === playerId)
@@ -46,8 +50,33 @@ export function applyElimination(state: GameState): GameState {
   }
 
   const alive = next.players.filter((p) => !p.eliminated);
-  if (alive.length <= 1) {
+  // 「一人でも脱落したら終了」設定では、最初の脱落が出た時点で打ち切る
+  const someoneEliminated = next.players.some((p) => p.eliminated);
+  const finished =
+    next.endCondition === "firstElimination" ? someoneEliminated : alive.length <= 1;
+  if (finished) {
     next = { ...next, phase: "finished" };
   }
   return next;
+}
+
+/**
+ * 終了時の順位を決める。先頭が1位。
+ * - firstElimination: 累計飲酒量が少ないほど上位(脱落者は最下位)。
+ * - lastSurvivor: 生存者が上位、脱落者は「脱落が遅いほど」上位。
+ */
+export function rankPlayers(state: GameState): GameState["players"] {
+  const players = [...state.players];
+  if (state.endCondition === "firstElimination") {
+    return players.sort((a, b) => {
+      if (a.eliminated !== b.eliminated) return a.eliminated ? 1 : -1;
+      return a.totalUnitsDrunk - b.totalUnitsDrunk;
+    });
+  }
+  return players.sort((a, b) => {
+    if (a.eliminated !== b.eliminated) return a.eliminated ? 1 : -1;
+    if (!a.eliminated && !b.eliminated) return a.totalUnitsDrunk - b.totalUnitsDrunk;
+    // 脱落者同士は、脱落した順番が遅いほど上位
+    return (b.eliminatedOrder ?? 0) - (a.eliminatedOrder ?? 0);
+  });
 }

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
+import { rankPlayers } from "../logic/elimination";
 import { playVictory } from "../logic/sound";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
@@ -11,17 +12,13 @@ interface GameOverModalProps {
 }
 
 export function GameOverModal({ state, dispatch }: GameOverModalProps) {
-  const survivors = state.players.filter((p) => !p.eliminated);
-  const winner = survivors.length === 1 ? survivors[0] : null;
-
   useEffect(() => {
     playVictory();
   }, []);
 
-  const ranked = [...state.players].sort((a, b) => {
-    if (a.eliminated !== b.eliminated) return a.eliminated ? 1 : -1;
-    return a.totalUnitsDrunk - b.totalUnitsDrunk;
-  });
+  const ranked = rankPlayers(state);
+  const winner = ranked[0] ?? null;
+  const firstEliminationRule = state.endCondition === "firstElimination";
 
   return (
     <Modal title="🏁 ゲーム終了" onClose={() => {}} dismissable={false}>
@@ -37,9 +34,16 @@ export function GameOverModal({ state, dispatch }: GameOverModalProps) {
           <p className="gameover-modal__winner">全員脱落、痛み分け…</p>
         )}
 
+        <p className="gameover-modal__rule">
+          {firstEliminationRule
+            ? "ルール: 一人脱落したら終了 — 累計飲酒量が少ない順"
+            : "ルール: 最後の一人まで — 脱落が遅い順"}
+        </p>
+
         <table className="gameover-modal__table">
           <thead>
             <tr>
+              <th>順位</th>
               <th>プレイヤー</th>
               <th>結果</th>
               <th>累計飲酒量</th>
@@ -47,14 +51,17 @@ export function GameOverModal({ state, dispatch }: GameOverModalProps) {
             </tr>
           </thead>
           <tbody>
-            {ranked.map((p) => {
+            {ranked.map((p, i) => {
               const owned = state.squares.filter((sq) => state.ownership[sq.id] === p.id).length;
               return (
                 <tr key={p.id} className={p.eliminated ? "gameover-modal__row--eliminated" : undefined}>
+                  <td className="gameover-modal__rank">{i + 1}位</td>
                   <td>
                     {PLAYER_EMOJIS[p.id % PLAYER_EMOJIS.length]} {p.name}
                   </td>
-                  <td>{p.eliminated ? "脱落" : "生存"}</td>
+                  <td>
+                    {p.eliminated ? `脱落(${p.eliminatedOrder}番目)` : "生存"}
+                  </td>
                   <td>{p.totalUnitsDrunk} unit</td>
                   <td>{owned}件</td>
                 </tr>

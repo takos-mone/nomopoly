@@ -40,11 +40,20 @@ export function PlayerPanel({ state, onSelectPlayer }: PlayerPanelProps) {
                   </span>
                   <strong>{p.name}</strong>
                   {isCurrent && <span className="player-list__turn-badge">手番</span>}
+                  {!p.eliminated && p.skipTurns > 0 && (
+                    <span className="player-list__rest-badge">😴 休み残り{p.skipTurns}</span>
+                  )}
                   {p.eliminated && <span className="player-list__eliminated-badge">脱落</span>}
                 </div>
                 <div className="player-list__stats">
                   現在地: {state.squares[p.position].name} / 累計飲酒量: {p.totalUnitsDrunk}u / 免除権: {p.exemptionUnits}u
+                  {p.taxiTickets > 0 && ` / 🎟️${p.taxiTickets}`}
                 </div>
+                {!p.eliminated && p.skipTurns > 0 && (
+                  <div className="player-list__rest-note">
+                    タクシー待機所で休み中(あと{p.skipTurns}ターン)
+                  </div>
+                )}
                 <div className="player-list__hint">所有物件 {ownedCount}件(タップで詳細)</div>
               </button>
             </li>
