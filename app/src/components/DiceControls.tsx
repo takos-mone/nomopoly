@@ -3,6 +3,7 @@ import { playDiceLand, playDiceTick, playPurchase } from "../logic/sound";
 import { JAIL_ESCAPE_COST, type GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Dice } from "./Dice";
+import { Illustration } from "./Illustration";
 
 interface DiceControlsProps {
   state: GameState;
@@ -117,6 +118,7 @@ export function DiceControls({ state, dispatch, turnPhase }: DiceControlsProps) 
   if (jailTurnsLeft > 0) {
     return (
       <div className={turnPhase === "in" ? "board-overlay board-overlay--turn-in" : "board-overlay"}>
+        <Illustration pose="sleepTable" size={92} className="illustration--panel" />
         <h3 className="board-overlay__title">{current.name}は一回休み</h3>
         <p className="board-overlay__jail">
           🚕 タクシー待機所で待機中(残り {jailTurnsLeft} ターン)

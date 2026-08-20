@@ -369,6 +369,32 @@
   transform: translateY(-1px);
 }
 
+/* 選択中であることが一目で分かるように、枠とチェックで示す */
+.target-choice-modal__item--selected {
+  border-color: var(--matcha);
+  background: rgba(95, 158, 111, 0.14);
+  box-shadow: 0 0 0 3px rgba(95, 158, 111, 0.2);
+}
+
+.target-choice-modal__item--selected::after {
+  content: "✓";
+  margin-left: auto;
+  color: var(--matcha-dark);
+  font-size: 17px;
+}
+
+/* 選択中は末尾の補足を押しのけないよう、チェックの前に置く */
+.target-choice-modal__item--selected .target-choice-modal__tail {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.target-choice-modal__confirm {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
 .target-choice-modal__tail {
   margin-left: auto;
   font-size: 12px;

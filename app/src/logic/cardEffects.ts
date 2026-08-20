@@ -578,7 +578,7 @@ export function applyFreeUpgrade(
     currentPlayerId,
     "🏗️",
     `${square.name} が${levelLabel}に!`,
-    `「${cardName}」で無料改装。家賃が上がった。`,
+    `「${cardName}」で無料改装。飲み代が上がった。`,
   );
 }
 

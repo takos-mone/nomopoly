@@ -1,0 +1,23 @@
+{
+  "name": "飲もポリー",
+  "short_name": "飲もポリー",
+  "description": "モノポリー×飲みゲー ボードゲームアプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6e7cf",
+  "theme_color": "#c0392b",
+  "icons": [
+    {
+      "src": "./icons/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

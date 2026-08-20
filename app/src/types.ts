@@ -100,7 +100,7 @@ export type Ownership = Record<number, number | undefined>;
 /** マスID -> 店舗レベル (0=土地のみ, 1-4=Lv, 5=最大Lv)。property のみ意味を持つ */
 export type ShopLevel = Record<number, number>;
 
-/** マスID -> 抵当情報。抵当中は家賃を徴収できず、改装もできない */
+/** マスID -> 抵当情報。抵当中は飲み代を徴収できず、改装もできない */
 export type Mortgages = Record<number, { debt: number } | undefined>;
 
 /** 飲み(受動的に発生した飲酒)の確認待ち状態 */
@@ -196,7 +196,7 @@ export interface GameState {
   /** 現在処理中のカードの、まだ適用していない残り効果(1枚のカードが複数人に飲ませる場合の待ち行列) */
   pendingCardQueue: CardEffect[];
   pendingCardName: string | null;
-  /** カード効果で移動した後、着地マスの家賃・購入・カード効果を連鎖解決する必要があるか */
+  /** カード効果で移動した後、着地マスの飲み代・購入・カード効果を連鎖解決する必要があるか */
   pendingLandingResolution: boolean;
   /** 先頭から順にタップで消化していく通知キュー */
   notices: Notice[];

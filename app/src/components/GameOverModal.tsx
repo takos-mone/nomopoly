@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 import { rankPlayers } from "../logic/elimination";
+import { Illustration } from "./Illustration";
 import { playVictory } from "../logic/sound";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
@@ -23,6 +24,7 @@ export function GameOverModal({ state, dispatch }: GameOverModalProps) {
   return (
     <Modal title="🏁 ゲーム終了" onClose={() => {}} dismissable={false}>
       <div className="gameover-modal">
+        <Illustration pose={winner ? "toast" : "faceDown"} size={128} className="illustration--result" />
         {winner ? (
           <p className="gameover-modal__winner">
             <span style={{ color: PLAYER_COLORS[winner.id % PLAYER_COLORS.length] }}>

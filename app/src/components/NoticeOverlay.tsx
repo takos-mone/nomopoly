@@ -1,5 +1,6 @@
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 import { useEffect, useState } from "react";
+import { Illustration, type Pose } from "./Illustration";
 import { describeSquare } from "../logic/squareInfo";
 import { playCardReveal, playCardSuspense } from "../logic/sound";
 import type { GameState, Notice } from "../types";
@@ -29,6 +30,26 @@ interface NoticeBody {
   detail: string;
   /** 演出のバリエーション(CSSクラスのサフィックス) */
   variant: string;
+}
+
+/** 通知の内容に合ったキャラクターのポーズ */
+function poseFor(notice: Notice): Pose {
+  switch (notice.kind) {
+    case "landing":
+      return "merryWalk";
+    case "card":
+      return notice.pile === "chance" ? "cheer" : "sitDrink";
+    case "gain":
+      return "toast";
+    case "transport":
+      return "sleepTable";
+    case "skip":
+      return "singing";
+    case "elimination":
+      return "collapsed";
+    case "coinFlip":
+      return notice.heads ? "cheer" : "dizzy";
+  }
 }
 
 function buildBody(notice: Notice, state: GameState): NoticeBody {
@@ -160,6 +181,7 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
       <div className={`notice-card notice-card--${body.variant}${teasing ? " notice-card--revealed" : ""}`}>
         {teasing && <div className="notice-card__burst" aria-hidden="true" />}
         <span className="notice-card__tag">{body.tag}</span>
+        <Illustration pose={poseFor(notice)} size={104} className="illustration--notice" />
         <div className="notice-card__icon">{body.icon}</div>
         <h3 className="notice-card__title">{body.title}</h3>
         <p className="notice-card__detail">{body.detail}</p>

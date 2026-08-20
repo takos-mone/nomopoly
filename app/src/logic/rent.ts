@@ -15,8 +15,8 @@ export const RENT_MULTIPLIER = {
 export type RentTier = keyof typeof RENT_MULTIPLIER;
 
 /**
- * 同じ色グループを独占している場合の家賃倍率。
- * 改装自体は独占していなくても行えるが、独占していると全レベルで家賃が1.5倍になる。
+ * 同じ色グループを独占している場合の飲み代倍率。
+ * 改装自体は独占していなくても行えるが、独占していると全レベルで飲み代が1.5倍になる。
  */
 export const MONOPOLY_RENT_MULTIPLIER = 1.5;
 

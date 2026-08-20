@@ -112,13 +112,13 @@ function drawRandomCard(pile: "chance" | "communityChest") {
 }
 
 /**
- * 家賃が発生したとき、その物件の所有者に「家賃の半分」の免除権を与える。
+ * 飲み代が発生したとき、その物件の所有者に「飲み代の半分」の免除権を与える。
  * 土地を買う旨みが薄いという問題への対処で、貸す側にも実利を持たせるためのルール。
  *
  * 支払い側がどう処理したか(飲みきる/先送り/免除権/抵当/交渉)や、
- * 「今日は休み」で無効化されたかどうかに関係なく、家賃が発生した時点で確定させる。
+ * 「今日は休み」で無効化されたかどうかに関係なく、飲み代が発生した時点で確定させる。
  * 支払い側の都合で貸主の収入が消えるのは筋が通らないため。
- * 端数は切り捨て(1 unitの家賃では0)。
+ * 端数は切り捨て(1 unitの飲み代では0)。
  */
 function grantRentIncome(
   state: GameState,
@@ -140,7 +140,7 @@ function grantRentIncome(
       state.log,
       state.turn,
       ownerId,
-      `${owner.name}は${squareName}の家賃収入として免除権+${gain}を得た。`,
+      `${owner.name}は${squareName}の飲み代収入として免除権+${gain}を得た。`,
     ),
   };
   return pushGain(
@@ -148,7 +148,7 @@ function grantRentIncome(
     ownerId,
     "💰",
     `免除権 +${gain} unit`,
-    `${squareName}の家賃(${rent} unit)の半分が${owner.name}の収入になった。`,
+    `${squareName}の飲み代(${rent} unit)の半分が${owner.name}の収入になった。`,
   );
 }
 
@@ -174,7 +174,7 @@ function resolveLanding(state: GameState, depth = 0): GameState {
     } else if (ownerId === player.id) {
       log(`${square.name}は自分の物件。何も起きない。`);
     } else if (next.mortgages[square.id]) {
-      log(`${square.name}は抵当中のため家賃は発生しない。`);
+      log(`${square.name}は抵当中のため飲み代は発生しない。`);
     } else if (square.type === "utility") {
       const owner = next.players.find((p) => p.id === ownerId)!;
       const ownedCount = next.squares.filter(
@@ -191,7 +191,7 @@ function resolveLanding(state: GameState, depth = 0): GameState {
       const owner = next.players.find((p) => p.id === ownerId)!;
       const amount = calcRentFor(next, square, ownerId);
       next = grantRentIncome(next, ownerId, square.name, amount);
-      next = createPendingDrink(next, player.id, amount, `${square.name}の家賃(${owner.name}へ)`);
+      next = createPendingDrink(next, player.id, amount, `${square.name}の飲み代(${owner.name}へ)`);
     }
   } else if (square.type === "tax") {
     next = createPendingDrink(next, player.id, square.amount, square.name);
@@ -552,7 +552,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         player.id,
         "🏠",
         `${square.name} を取得!`,
-        "他のプレイヤーが止まると家賃が発生する。改装するとさらに家賃が上がる。",
+        "他のプレイヤーが止まると飲み代が発生する。改装するとさらに飲み代が上がる。",
       );
     }
 
@@ -661,7 +661,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         playerId,
         "🎫",
         `免除権 +${grant} unit`,
-        `${square.name}を抵当に入れた。返済するまで家賃・改装は止まる(返済${debt} unit)。`,
+        `${square.name}を抵当に入れた。返済するまで飲み代・改装は止まる(返済${debt} unit)。`,
       );
       if (remaining <= 0) {
         log = pushLog(log, state.turn, playerId, `${reason}を全額免除した!`);

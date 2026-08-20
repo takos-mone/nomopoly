@@ -2,7 +2,15 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!--
+      アイコンは PNG を優先し、まだ置かれていない場合は既存の SVG にフォールバックする。
+      ブラウザは後に書いた対応形式を優先するため、PNG を後ろに置いている。
+    -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="icon" type="image/png" sizes="512x512" href="./icons/app-icon.png" />
+    <link rel="apple-touch-icon" href="./icons/app-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#c0392b" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>飲もポリー</title>
     <meta name="description" content="モノポリー×飲みゲー ボードゲームアプリ「飲もポリー」" />

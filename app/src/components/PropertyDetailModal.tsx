@@ -51,7 +51,7 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
               )}
             </dl>
             {mortgage ? (
-              <p className="detail-modal__empty">抵当中のため家賃は発生せず、改装もできません。</p>
+              <p className="detail-modal__empty">抵当中のため飲み代は発生せず、改装もできません。</p>
             ) : (
               <>
                 <h3>訪問時に飲む量(店舗レベル別)</h3>
@@ -62,10 +62,10 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
                 />
                 <p className="detail-modal__monopoly-note">
                   {monopoly
-                    ? `${COLOR_GROUP_LABEL[square.colorGroup]}を独占中!全レベルの家賃が ×${MONOPOLY_RENT_MULTIPLIER} になっています。`
-                    : `同じ色の土地をすべて揃えると、全レベルの家賃が ×${MONOPOLY_RENT_MULTIPLIER} になります。`}
+                    ? `${COLOR_GROUP_LABEL[square.colorGroup]}を独占中!全レベルの飲み代が ×${MONOPOLY_RENT_MULTIPLIER} になっています。`
+                    : `同じ色の土地をすべて揃えると、全レベルの飲み代が ×${MONOPOLY_RENT_MULTIPLIER} になります。`}
                   <br />
-                  他のプレイヤーが止まると、持ち主は家賃の半分だけ免除権を獲得します。
+                  他のプレイヤーが止まると、持ち主は飲み代の半分だけ免除権を獲得します。
                 </p>
               </>
             )}
@@ -117,7 +117,7 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
               )}
             </dl>
             {mortgage ? (
-              <p className="detail-modal__empty">抵当中のため家賃は発生しません。</p>
+              <p className="detail-modal__empty">抵当中のため飲み代は発生しません。</p>
             ) : (
               <>
                 <h3>訪問時に飲む量(所有軒数別)</h3>
@@ -152,7 +152,7 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
               )}
             </dl>
             {mortgage ? (
-              <p className="detail-modal__empty">抵当中のため家賃は発生しません。</p>
+              <p className="detail-modal__empty">抵当中のため飲み代は発生しません。</p>
             ) : (
               <>
                 <h3>訪問時に飲む量</h3>

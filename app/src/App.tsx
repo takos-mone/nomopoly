@@ -101,12 +101,12 @@ function App() {
     selectedPlayerId !== null ? state.players.find((p) => p.id === selectedPlayerId) ?? null : null;
 
   // 駒がまだ目的地までホップ移動中かどうか。移動アニメーションが終わるまで、
-  // 家賃・カード等の自動発生ポップアップの表示を待たせる。
+  // 飲み代・カード等の自動発生ポップアップの表示を待たせる。
   const isAnimating = state.players.some((p) => (visualPositions[p.id] ?? p.position) !== p.position);
 
   // 通知は駒の移動が終わってから、先頭の1件だけを出す。
   const activeNotice = !isAnimating ? state.notices[0] ?? null : null;
-  // 通知を消化しきるまで、家賃確認やサイコロなどの操作は出さない(表示順の破綻を防ぐ)
+  // 通知を消化しきるまで、飲み代確認やサイコロなどの操作は出さない(表示順の破綻を防ぐ)
   const noticesBlocking = state.notices.length > 0;
 
   const dismissNotice = () => {
