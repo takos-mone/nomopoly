@@ -21,6 +21,7 @@ export function HowToPlayModal({ onClose }: HowToPlayModalProps) {
         <section>
           <h3>🏠 土地・店舗</h3>
           <p>未所有の土地に止まると購入できる。所有地に止まると持ち主に家賃(unit)を飲む。改装は<strong>同じ色を全部持っていなくても</strong>でき、自分の手番のときだけ行える。ただし同じ色をすべて揃えると、全レベルの家賃が<strong>1.5倍</strong>になる。</p>
+          <p>他のプレイヤーが自分の物件に止まると、<strong>持ち主は家賃の半分だけ免除権をもらえる</strong>(端数は切り捨て)。相手がどう払ったかに関係なく、家賃が発生した時点で確定する。</p>
         </section>
 
         <section>

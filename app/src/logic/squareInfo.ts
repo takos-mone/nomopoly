@@ -44,24 +44,26 @@ export function describeSquare(state: GameState, square: Square, playerId: numbe
       return { kind, body: "自分の物件。家賃は発生しない。改装してレベルを上げると家賃が上がる。" };
     }
     if (owner) {
+      const income = `${owner.name}は家賃の半分だけ免除権をもらえる。`;
       if (square.type === "utility") {
-        return { kind, body: `${owner.name}の交通機関。サイコロを1個振り、出た目のぶん飲む(2種類独占されていると×2)。` };
+        return { kind, body: `${owner.name}の交通機関。サイコロを1個振り、出た目のぶん飲む(2種類独占されていると×2)。${income}` };
       }
       if (square.type === "convenience") {
-        return { kind, body: `${owner.name}のコンビニ。同じ持ち主が持っている軒数が多いほど家賃が上がる。` };
+        return { kind, body: `${owner.name}のコンビニ。同じ持ち主が持っている軒数が多いほど家賃が上がる。${income}` };
       }
-      return { kind, body: `${owner.name}の店。店舗レベルに応じた家賃を飲む。同じ色を独占されていると家賃は倍。` };
+      return { kind, body: `${owner.name}の店。店舗レベルに応じた家賃を飲む。同じ色を独占されていると家賃は1.5倍。${income}` };
     }
 
     // 未所有
+    const income = "他の人が止まると、家賃の半分だけ免除権が手に入る。";
     if (square.type === "utility") {
-      return { kind, body: `未所有。${square.price} unit飲んで購入できる。持っていると、止まった人がサイコロの目のぶん飲む。` };
+      return { kind, body: `未所有。${square.price} unit飲んで購入できる。止まった人はサイコロの目のぶん飲む。${income}` };
     }
     if (square.type === "convenience") {
       const max = CONVENIENCE_RENT_BY_COUNT[4];
-      return { kind, body: `未所有。${square.price} unit飲んで購入できる。4軒すべて揃えると家賃は${max} unitまで上がる。` };
+      return { kind, body: `未所有。${square.price} unit飲んで購入できる。4軒すべて揃えると家賃は${max} unitまで上がる。${income}` };
     }
-    return { kind, body: `未所有。${square.price} unit飲んで購入できる。買ったあとは改装して家賃を上げられる。` };
+    return { kind, body: `未所有。${square.price} unit飲んで購入できる。改装で家賃を上げられる。${income}` };
   }
 
   switch (square.type) {

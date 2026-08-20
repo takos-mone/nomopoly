@@ -64,6 +64,8 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
                   {monopoly
                     ? `${COLOR_GROUP_LABEL[square.colorGroup]}を独占中!全レベルの家賃が ×${MONOPOLY_RENT_MULTIPLIER} になっています。`
                     : `同じ色の土地をすべて揃えると、全レベルの家賃が ×${MONOPOLY_RENT_MULTIPLIER} になります。`}
+                  <br />
+                  他のプレイヤーが止まると、持ち主は家賃の半分だけ免除権を獲得します。
                 </p>
               </>
             )}

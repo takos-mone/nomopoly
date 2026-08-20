@@ -91,6 +91,47 @@ function drawRandomCard(pile: "chance" | "communityChest") {
   return deck[Math.floor(Math.random() * deck.length)];
 }
 
+/**
+ * 家賃が発生したとき、その物件の所有者に「家賃の半分」の免除権を与える。
+ * 土地を買う旨みが薄いという問題への対処で、貸す側にも実利を持たせるためのルール。
+ *
+ * 支払い側がどう処理したか(飲みきる/先送り/免除権/抵当/交渉)や、
+ * 「今日は休み」で無効化されたかどうかに関係なく、家賃が発生した時点で確定させる。
+ * 支払い側の都合で貸主の収入が消えるのは筋が通らないため。
+ * 端数は切り捨て(1 unitの家賃では0)。
+ */
+function grantRentIncome(
+  state: GameState,
+  ownerId: number,
+  squareName: string,
+  rent: number,
+): GameState {
+  const gain = Math.floor(rent / 2);
+  if (gain <= 0) return state;
+  const owner = state.players.find((p) => p.id === ownerId);
+  if (!owner || owner.eliminated) return state;
+
+  const withGain: GameState = {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === ownerId ? { ...p, exemptionUnits: p.exemptionUnits + gain } : p,
+    ),
+    log: pushLog(
+      state.log,
+      state.turn,
+      ownerId,
+      `${owner.name}は${squareName}の家賃収入として免除権+${gain}を得た。`,
+    ),
+  };
+  return pushGain(
+    withGain,
+    ownerId,
+    "💰",
+    `免除権 +${gain} unit`,
+    `${squareName}の家賃(${rent} unit)の半分が${owner.name}の収入になった。`,
+  );
+}
+
 /** @param depth カード移動による着地連鎖の深さ(無限ループ防止) */
 function resolveLanding(state: GameState, depth = 0): GameState {
   const player = currentPlayer(state);
@@ -124,10 +165,12 @@ function resolveLanding(state: GameState, depth = 0): GameState {
       log(
         `${square.name}: サイコロの目${dieRoll}${ownedCount >= 2 ? " ×2(2種類独占)" : ""} = ${amount} unit`,
       );
+      next = grantRentIncome(next, ownerId, square.name, amount);
       next = createPendingDrink(next, player.id, amount, `${square.name}(${owner.name}へ)`);
     } else {
       const owner = next.players.find((p) => p.id === ownerId)!;
       const amount = calcRentFor(next, square, ownerId);
+      next = grantRentIncome(next, ownerId, square.name, amount);
       next = createPendingDrink(next, player.id, amount, `${square.name}の家賃(${owner.name}へ)`);
     }
   } else if (square.type === "tax") {
