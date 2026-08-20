@@ -1,0 +1,167 @@
+.notice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(59, 42, 30, 0.42);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+  border: none;
+  animation: notice-fade-in 0.14s ease;
+}
+
+@keyframes notice-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.notice-card {
+  background: var(--panel);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  border-top: 6px solid var(--noren);
+  box-shadow: var(--shadow-strong);
+  padding: 22px 24px 16px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  animation: notice-pop-in 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+
+@keyframes notice-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.notice-card--landing {
+  border-top-color: var(--sky);
+}
+
+.notice-card--chance {
+  border-top-color: #d9557f;
+}
+
+.notice-card--community {
+  border-top-color: var(--matcha);
+}
+
+.notice-card--gain {
+  border-top-color: var(--gold);
+}
+
+.notice-card--transport {
+  border-top-color: var(--noren-dark);
+}
+
+.notice-card__tag {
+  display: inline-block;
+  background: var(--paper-warm);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.notice-card__icon {
+  font-size: 40px;
+  line-height: 1;
+  margin: 10px 0 6px;
+  animation: notice-icon-pop 0.42s ease;
+}
+
+@keyframes notice-icon-pop {
+  0% {
+    transform: scale(0.4) rotate(-12deg);
+  }
+  70% {
+    transform: scale(1.15) rotate(4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+/* 強制移動はアイコンを滑らせて「飛ばされた」感を出す */
+.notice-card--transport .notice-card__icon {
+  animation: notice-transport 0.6s ease;
+}
+
+@keyframes notice-transport {
+  0% {
+    transform: translateX(-90px);
+    opacity: 0;
+  }
+  70% {
+    transform: translateX(10px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.notice-card__title {
+  margin: 0 0 8px;
+  font-size: 19px;
+  color: var(--noren-dark);
+}
+
+.notice-card__detail {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.notice-card__player {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.notice-card__token {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--border);
+}
+
+.notice-card__hint {
+  display: block;
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  animation: notice-hint-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes notice-hint-blink {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}

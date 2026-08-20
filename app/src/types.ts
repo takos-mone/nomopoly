@@ -119,6 +119,27 @@ export interface CardDrawEvent {
   seq: number;
 }
 
+/**
+ * プレイヤーにタップで送ってもらう通知。着地説明・カード効果・獲得・強制移動を
+ * 1本のキューで順番に見せる(個別のポップアップを増やすと表示順が破綻するため)。
+ */
+export type Notice =
+  | { kind: "landing"; squareId: number; playerId: number }
+  | { kind: "card"; pile: CardPileType; cardName: string; cardDescription: string }
+  | { kind: "gain"; playerId: number; icon: string; title: string; detail: string }
+  /**
+   * 強制移動。通知を消したタイミングで初めて駒が飛ぶ。
+   * こうしないと「止まったマスを見せる前に移動済み」になってしまう。
+   */
+  | {
+      kind: "transport";
+      playerId: number;
+      toSquareId: number;
+      skipTurn: boolean;
+      title: string;
+      detail: string;
+    };
+
 export interface GameState {
   players: Player[];
   currentPlayerIndex: number;
@@ -138,6 +159,8 @@ export interface GameState {
   /** カード効果で移動した後、着地マスの家賃・購入・カード効果を連鎖解決する必要があるか */
   pendingLandingResolution: boolean;
   lastCardDraw: CardDrawEvent | null;
+  /** 先頭から順にタップで消化していく通知キュー */
+  notices: Notice[];
   /** 累計飲酒量がこのunitに達したプレイヤーは脱落する(セットアップ画面でカスタマイズ可能) */
   eliminationThreshold: number;
   phase: "setup" | "playing" | "finished";

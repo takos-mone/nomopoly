@@ -20,6 +20,9 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
   const [justLanded, setJustLanded] = useState(false);
   const [displayDice, setDisplayDice] = useState<[number, number]>([1, 1]);
   const [confirmingPurchase, setConfirmingPurchase] = useState(false);
+  // 出目を確定してから、プレイヤーが内容を確認してタップするまで待つ。
+  // ここに値が入っている間はまだ ROLL_DICE を投げていない(=盤面は動かない)。
+  const [rolledDice, setRolledDice] = useState<[number, number] | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -49,14 +52,25 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    const result: [number, number] = [randomFace(), randomFace()];
     setRolling(false);
     setJustLanded(true);
     setTimeout(() => setJustLanded(false), 320);
     playDiceLand();
-    dispatch({ type: "ROLL_DICE" });
+    // まだ動かさない。出目を見せて、タップで先へ進めてもらう。
+    setDisplayDice(result);
+    setRolledDice(result);
   };
 
-  const shownDice = state.lastDice ?? displayDice;
+  const proceedAfterRoll = () => {
+    if (!rolledDice) return;
+    dispatch({ type: "ROLL_DICE", dice: rolledDice });
+    setRolledDice(null);
+  };
+
+  const shownDice = rolledDice ?? state.lastDice ?? displayDice;
+  const showDiceTray = rolling || rolledDice !== null || hasRolledThisTurn;
+  const diceTotal = rolledDice ? rolledDice[0] + rolledDice[1] : state.lastDice ? state.lastDice[0] + state.lastDice[1] : null;
 
   if (state.pendingPurchase) {
     const square = state.squares[state.pendingPurchase.squareId];
@@ -100,16 +114,16 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
     <div className="board-overlay">
       <h3 className="board-overlay__title">{current.name}のターン</h3>
 
-      {(rolling || hasRolledThisTurn) && (
+      {showDiceTray && (
         <div className="dice-tray">
           <Dice value={shownDice[0]} spinning={rolling} landed={justLanded} />
           <Dice value={shownDice[1]} spinning={rolling} landed={justLanded} />
-          {state.lastDice && !rolling && <span className="dice-tray__total">合計 {state.lastDice[0] + state.lastDice[1]}</span>}
+          {diceTotal !== null && !rolling && <span className="dice-tray__total">合計 {diceTotal}</span>}
         </div>
       )}
 
       <div className="dice-actions">
-        {!hasRolledThisTurn && !rolling && (
+        {!hasRolledThisTurn && !rolling && rolledDice === null && (
           <button className="primary-button" onClick={startRolling}>
             サイコロを振る
           </button>
@@ -119,7 +133,16 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
             ストップ!
           </button>
         )}
-        <button className="secondary-button" disabled={!hasRolledThisTurn} onClick={() => dispatch({ type: "END_TURN" })}>
+        {rolledDice !== null && (
+          <button className="primary-button dice-stop-button" onClick={proceedAfterRoll}>
+            {rolledDice[0] + rolledDice[1]}マス進む
+          </button>
+        )}
+        <button
+          className="secondary-button"
+          disabled={!hasRolledThisTurn || rolledDice !== null}
+          onClick={() => dispatch({ type: "END_TURN" })}
+        >
           ターン終了
         </button>
       </div>

@@ -52,9 +52,12 @@ export function calcUtilityRent(ownedCount: number, dieRoll: number): number {
   return dieRoll * multiplier;
 }
 
-/** GOマス通過/到達で得る免除権(exemption)unit */
-export const GO_PASS_EXEMPTION = 3;
-export const GO_LAND_EXEMPTION = 5;
+/**
+ * GOマスで得る免除権(exemption)unit。
+ * 「1周するたびに2 unit」なので、通過も、ちょうど到達(=1周完了)も同額にする。
+ */
+export const GO_PASS_EXEMPTION = 2;
+export const GO_LAND_EXEMPTION = 2;
 
 /** 抵当に入れた際、購入価格の半額を免除権として得る */
 export function calcMortgageExemption(price: number): number {

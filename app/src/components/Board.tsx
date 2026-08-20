@@ -15,6 +15,8 @@ interface BoardProps {
 }
 
 export function Board({ state, onSelectSquare, visualPositions, cardDraw, overlay }: BoardProps) {
+  const currentPlayerId = state.players[state.currentPlayerIndex]?.id;
+
   return (
     <div className="board-grid">
       {state.squares.map((square) => {
@@ -31,7 +33,14 @@ export function Board({ state, onSelectSquare, visualPositions, cardDraw, overla
           <button
             key={square.id}
             type="button"
-            className={mortgaged ? `board-square board-square--${square.type} board-square--mortgaged` : `board-square board-square--${square.type}`}
+            className={[
+              "board-square",
+              `board-square--${square.type}`,
+              mortgaged ? "board-square--mortgaged" : "",
+              owner ? "board-square--owned" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             style={{
               gridRow: row + 1,
               gridColumn: col + 1,
@@ -40,6 +49,16 @@ export function Board({ state, onSelectSquare, visualPositions, cardDraw, overla
             onClick={() => onSelectSquare(square.id)}
           >
             {stripeColor && <div className="board-square__stripe" style={{ background: stripeColor }} />}
+            {/* 所有者は色ではなくプレイヤーのマーク(絵文字)で示す */}
+            {owner && (
+              <span
+                className="board-square__owner"
+                style={{ background: ownerColor }}
+                title={`${owner.name}の所有`}
+              >
+                {PLAYER_EMOJIS[owner.id % PLAYER_EMOJIS.length]}
+              </span>
+            )}
             {square.type === "property" && level > 0 && !mortgaged && (
               <div className="board-square__level" style={{ background: ownerColor }}>
                 {level >= 5 ? "MAX" : `Lv${level}`}
@@ -53,7 +72,11 @@ export function Board({ state, onSelectSquare, visualPositions, cardDraw, overla
               {playersHere.map((p) => (
                 <span
                   key={p.id}
-                  className="board-square__token"
+                  className={
+                    p.id === currentPlayerId
+                      ? "board-square__token board-square__token--current"
+                      : "board-square__token"
+                  }
                   style={{ background: PLAYER_COLORS[p.id % PLAYER_COLORS.length] }}
                   title={p.name}
                 >

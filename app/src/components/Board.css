@@ -110,6 +110,24 @@
   flex-shrink: 0;
 }
 
+/* 所有者マーク。マスの左上に持ち主の絵文字を出す */
+.board-square__owner {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: clamp(12px, 3vw, 18px);
+  height: clamp(12px, 3vw, 18px);
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(7px, 2vw, 12px);
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+}
+
 .board-square__level {
   position: absolute;
   top: 2px;
@@ -131,6 +149,11 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 所有者マークは1行目の左端に重なるので、その分だけ1行目を字下げする */
+.board-square--owned .board-square__name {
+  text-indent: clamp(14px, 3.4vw, 21px);
 }
 
 .board-square__price {
@@ -157,6 +180,24 @@
   line-height: 1;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   animation: token-hop 0.24s ease;
+}
+
+/* 手番のプレイヤーの駒は一目で分かるように強調する */
+.board-square__token--current {
+  border-color: var(--gold);
+  transform: scale(1.15);
+  z-index: 3;
+  animation: token-hop 0.24s ease, token-current-pulse 1.5s ease-in-out 0.24s infinite;
+}
+
+@keyframes token-current-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(227, 160, 56, 0.75), 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(227, 160, 56, 0), 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
 }
 
 @keyframes token-hop {

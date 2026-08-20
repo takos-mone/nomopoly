@@ -1,7 +1,7 @@
 import { CHANCE_CARDS, COMMUNITY_CHEST_CARDS } from "../data/cards";
 import { BOARD, GO_SQUARE_ID, JAIL_SQUARE_ID } from "../data/board";
 import { drawAndApplyCard, processCardEffectQueue, resolveChosenTarget } from "../logic/cardEffects";
-import { createPendingDrink, pushLog } from "../logic/drinkEngine";
+import { createPendingDrink, pushGain, pushLog, pushNotice } from "../logic/drinkEngine";
 import { DEFAULT_ELIMINATION_THRESHOLD, applyElimination } from "../logic/elimination";
 import {
   CONVENIENCE_RENT_BY_COUNT,
@@ -17,7 +17,8 @@ import { isOwnable } from "../types";
 
 export type GameAction =
   | { type: "START_GAME"; names: string[]; eliminationThreshold?: number }
-  | { type: "ROLL_DICE" }
+  /** dice は UI 側で先に出目を確定して見せてから渡す。省略時はここで振る */
+  | { type: "ROLL_DICE"; dice?: [number, number] }
   | { type: "CONFIRM_PURCHASE" }
   | { type: "DECLINE_PURCHASE" }
   | { type: "BUILD_SHOP"; squareId: number }
@@ -32,6 +33,7 @@ export type GameAction =
   | { type: "CHOOSE_TARGET"; playerId: number }
   | { type: "USE_EXEMPTION" }
   | { type: "RESUME_GAME"; state: GameState }
+  | { type: "DISMISS_NOTICE" }
   | { type: "RESET_GAME" };
 
 let cardDrawSeq = 0;
@@ -39,6 +41,7 @@ function nextCardDrawSeq(): number {
   cardDrawSeq += 1;
   return cardDrawSeq;
 }
+
 
 export function createInitialState(): GameState {
   return {
@@ -58,6 +61,7 @@ export function createInitialState(): GameState {
     pendingCardName: null,
     pendingLandingResolution: false,
     lastCardDraw: null,
+    notices: [],
     eliminationThreshold: DEFAULT_ELIMINATION_THRESHOLD,
     phase: "setup",
   };
@@ -82,7 +86,12 @@ function drawRandomCard(pile: "chance" | "communityChest") {
 function resolveLanding(state: GameState): GameState {
   const player = currentPlayer(state);
   const square = state.squares[player.position];
-  let next = { ...state };
+  // 着地したマスの説明をまず出す。以降の効果通知はこの後ろに積まれる。
+  let next: GameState = pushNotice(state, {
+    kind: "landing",
+    squareId: square.id,
+    playerId: player.id,
+  });
   const log = (msg: string) => {
     next = { ...next, log: pushLog(next.log, next.turn, player.id, msg) };
   };
@@ -114,26 +123,38 @@ function resolveLanding(state: GameState): GameState {
     }
   } else if (square.type === "tax") {
     next = createPendingDrink(next, player.id, square.amount, square.name);
-  } else if (square.type === "chance") {
-    next = { ...next, lastCardDraw: { pile: "chance", seq: nextCardDrawSeq() } };
-    const card = drawRandomCard("chance");
-    next = finalizeCardResolution(drawAndApplyCard(next, card, player.id));
-  } else if (square.type === "communityChest") {
-    next = { ...next, lastCardDraw: { pile: "communityChest", seq: nextCardDrawSeq() } };
-    const card = drawRandomCard("communityChest");
+  } else if (square.type === "chance" || square.type === "communityChest") {
+    const pile = square.type;
+    const card = drawRandomCard(pile);
+    next = { ...next, lastCardDraw: { pile, seq: nextCardDrawSeq() } };
+    // 効果を適用する前にカードの内容を通知キューへ積む。
+    // 効果側が積む通知(獲得など)は必ずこの後ろに並ぶので、
+    // 「カードの説明 → その結果」の順で表示される。
+    next = pushNotice(next, {
+      kind: "card",
+      pile,
+      cardName: card.name,
+      cardDescription: card.description,
+    });
     next = finalizeCardResolution(drawAndApplyCard(next, card, player.id));
   } else if (square.type === "jail") {
     log("タクシー待機所を見学中(効果なし)。");
   } else if (square.type === "freeParking") {
     log("小休憩スポットで一休み(効果なし)。");
   } else if (square.type === "goToJail") {
-    const updatedPlayers = next.players.map((p) =>
-      p.id === player.id ? { ...p, position: JAIL_SQUARE_ID, skipNextTurn: true } : p,
-    );
-    next = { ...next, players: updatedPlayers };
-    log("終電を逃してタクシー待機所へ。次のターンは休み。");
+    log("終電を逃してタクシー待機所へ強制移動。次のターンは休み。");
+    // ここでは動かさない。通知を消した瞬間に一気にワープさせることで、
+    // 「このマスに止まった」→「飛ばされた」の順で見せる。
+    next = pushNotice(next, {
+      kind: "transport",
+      playerId: player.id,
+      toSquareId: JAIL_SQUARE_ID,
+      skipTurn: true,
+      title: "終電を逃した!",
+      detail: `${player.name}はタクシー待機所へ強制移動。次のターンは休みになる。`,
+    });
   } else if (square.type === "go") {
-    log("一軒目(乾杯)に到着!");
+    log("GOに到着!");
   }
 
   return next;
@@ -180,8 +201,32 @@ function baseReducer(state: GameState, action: GameAction): GameState {
 
     // 保存済みゲームからの再開。盤面データ(squares)はコード側の最新定義を使い、
     // セーブにはプレイヤーの進行状況だけを反映させる。
+    // 着地・カードの演出イベントは再開時に蒸し返さないよう捨てる。
     case "RESUME_GAME":
-      return { ...action.state, squares: createInitialState().squares };
+      return {
+        ...action.state,
+        squares: createInitialState().squares,
+        notices: [],
+        lastCardDraw: null,
+      };
+
+    case "DISMISS_NOTICE": {
+      const [head, ...rest] = state.notices;
+      if (!head) return state;
+      const dismissed: GameState = { ...state, notices: rest };
+      // 強制移動は通知を閉じた瞬間に実行する(演出と実際の移動を一致させる)
+      if (head.kind === "transport") {
+        return {
+          ...dismissed,
+          players: dismissed.players.map((p) =>
+            p.id === head.playerId
+              ? { ...p, position: head.toSquareId, skipNextTurn: head.skipTurn || p.skipNextTurn }
+              : p,
+          ),
+        };
+      }
+      return dismissed;
+    }
 
     case "START_GAME": {
       const players: Player[] = action.names.map((name, i) => ({
@@ -209,8 +254,8 @@ function baseReducer(state: GameState, action: GameAction): GameState {
 
     case "ROLL_DICE": {
       if (state.pendingPurchase || state.pendingDrink || state.pendingTargetChoice) return state;
-      const d1 = 1 + Math.floor(Math.random() * 6);
-      const d2 = 1 + Math.floor(Math.random() * 6);
+      if (state.notices.length > 0) return state;
+      const [d1, d2] = action.dice ?? [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
       const player = currentPlayer(state);
       const steps = d1 + d2;
       const oldPos = player.position;
@@ -242,8 +287,15 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       if (exemptionGain > 0) {
         next = {
           ...next,
-          log: pushLog(next.log, next.turn, player.id, `一軒目(乾杯)で免除権+${exemptionGain}。`),
+          log: pushLog(next.log, next.turn, player.id, `GOを1周して免除権+${exemptionGain}。`),
         };
+        next = pushGain(
+          next,
+          player.id,
+          "🎫",
+          `免除権 +${exemptionGain} unit`,
+          `GOを1周した!免除権は飲みが発生したときに自分の意思で使える。`,
+        );
       }
       return resolveLanding(next);
     }
@@ -262,7 +314,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         player.id,
         `${player.name}は${square.name}を${price} unitで購入(即座に飲んで支払い)。`,
       );
-      return {
+      const purchased: GameState = {
         ...state,
         players: updatedPlayers,
         ownership: { ...state.ownership, [squareId]: player.id },
@@ -270,6 +322,13 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         pendingPurchase: null,
         log,
       };
+      return pushGain(
+        purchased,
+        player.id,
+        "🏠",
+        `${square.name} を取得!`,
+        "他のプレイヤーが止まると家賃が発生する。改装するとさらに家賃が上がる。",
+      );
     }
 
     case "DECLINE_PURCHASE": {
@@ -305,6 +364,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
 
     case "END_TURN": {
       if (state.pendingPurchase || state.pendingDrink || state.pendingTargetChoice) return state;
+      if (state.notices.length > 0) return state;
       const alive = state.players.filter((p) => !p.eliminated);
       if (alive.length <= 1) {
         return { ...state, phase: "finished" };
@@ -395,13 +455,20 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         log = pushLog(log, state.turn, playerId, `免除権${used} unitを${reason}に充当。`);
       }
       const mortgages = { ...state.mortgages, [action.squareId]: { debt } };
+      const withGain = pushGain(
+        state,
+        playerId,
+        "🎫",
+        `免除権 +${grant} unit`,
+        `${square.name}を抵当に入れた。返済するまで家賃・改装は止まる(返済${debt} unit)。`,
+      );
       if (remaining <= 0) {
         log = pushLog(log, state.turn, playerId, `${reason}を全額免除した!`);
-        const next: GameState = { ...state, players, mortgages, log, pendingDrink: null };
+        const next: GameState = { ...withGain, players, mortgages, log, pendingDrink: null };
         return finalizeCardResolution(next);
       }
       return {
-        ...state,
+        ...withGain,
         players,
         mortgages,
         log,

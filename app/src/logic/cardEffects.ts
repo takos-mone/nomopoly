@@ -1,6 +1,6 @@
 import type { CardDef, CardEffect, CardTarget } from "../data/cards";
 import type { GameState } from "../types";
-import { createPendingDrink, pushLog } from "./drinkEngine";
+import { createPendingDrink, pushGain, pushLog } from "./drinkEngine";
 
 function ownedCount(state: GameState, playerId: number): number {
   return state.squares.filter((sq) => state.ownership[sq.id] === playerId).length;
@@ -138,7 +138,14 @@ function applySingleEffect(
       const targetName = state.players.find((p) => p.id === targetId)!.name;
       const players = state.players.map((p) => (p.id === targetId ? { ...p, exemptionUnits: p.exemptionUnits + effect.amount } : p));
       const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で${targetName}の免除権+${effect.amount}。`);
-      return { state: { ...state, players, log }, blocked: false };
+      const gained = pushGain(
+        { ...state, players, log },
+        targetId,
+        "🎫",
+        `免除権 +${effect.amount} unit`,
+        `${targetName}が「${cardName}」で獲得。`,
+      );
+      return { state: gained, blocked: false };
     }
 
     case "allExemption": {
@@ -146,7 +153,14 @@ function applySingleEffect(
         p.eliminated ? p : { ...p, exemptionUnits: p.exemptionUnits + effect.amount },
       );
       const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で全員の免除権+${effect.amount}。`);
-      return { state: { ...state, players, log }, blocked: false };
+      const gained = pushGain(
+        { ...state, players, log },
+        currentPlayerId,
+        "🎫",
+        `全員の免除権 +${effect.amount} unit`,
+        `「${cardName}」で生存している全員が獲得。`,
+      );
+      return { state: gained, blocked: false };
     }
 
     case "duel": {
@@ -171,7 +185,14 @@ function applySingleEffect(
           p.id === currentPlayerId ? { ...p, exemptionUnits: p.exemptionUnits + effect.winExemption } : p,
         );
         const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 表!免除権+${effect.winExemption}。`);
-        return { state: { ...state, players, log }, blocked: false };
+        const gained = pushGain(
+          { ...state, players, log },
+          currentPlayerId,
+          "🪙",
+          `免除権 +${effect.winExemption} unit`,
+          `「${cardName}」のコイントスに勝った!`,
+        );
+        return { state: gained, blocked: false };
       }
       const logged = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 裏...`);
       const next = createPendingDrink({ ...state, log: logged }, currentPlayerId, effect.loseDrink, `カード「${cardName}」(裏)`);
@@ -222,13 +243,21 @@ function applySingleEffect(
       }
       const target = upgradable[Math.floor(Math.random() * upgradable.length)];
       const newLevel = (state.shopLevel[target.id] ?? 0) + 1;
+      const levelLabel = newLevel >= 5 ? "MAX" : `Lv.${newLevel}`;
       const log = pushLog(
         state.log,
         state.turn,
         currentPlayerId,
-        `「${cardName}」で「${target.name}」が無料でLv.${newLevel >= 5 ? "MAX" : newLevel}に!`,
+        `「${cardName}」で「${target.name}」が無料で${levelLabel}に!`,
       );
-      return { state: { ...state, shopLevel: { ...state.shopLevel, [target.id]: newLevel }, log }, blocked: false };
+      const upgraded = pushGain(
+        { ...state, shopLevel: { ...state.shopLevel, [target.id]: newLevel }, log },
+        currentPlayerId,
+        "🏗️",
+        `${target.name} が${levelLabel}に!`,
+        `「${cardName}」で無料改装。家賃が上がった。`,
+      );
+      return { state: upgraded, blocked: false };
     }
 
     case "reduceRichestDrinkTotal": {

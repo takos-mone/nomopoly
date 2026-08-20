@@ -5,6 +5,7 @@ import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
 import { EventLog } from "./components/EventLog";
 import { GameOverModal } from "./components/GameOverModal";
 import { HowToPlayModal } from "./components/HowToPlayModal";
+import { NoticeOverlay } from "./components/NoticeOverlay";
 import { PlayerDetailModal } from "./components/PlayerDetailModal";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { PropertyDetailModal } from "./components/PropertyDetailModal";
@@ -22,7 +23,9 @@ function App() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [muted, setMutedState] = useState(isMuted);
   const [showHowTo, setShowHowTo] = useState(false);
-  const visualPositions = useTokenAnimation(state.players, state.squares.length);
+  // 強制移動で「歩かせず」ワープさせたいプレイヤー。通知を閉じた瞬間にセットする。
+  const [snapPlayerIds, setSnapPlayerIds] = useState<number[]>([]);
+  const visualPositions = useTokenAnimation(state.players, state.squares.length, snapPlayerIds);
   const prevEliminatedCount = useRef(0);
 
   useEffect(() => {
@@ -32,6 +35,16 @@ function App() {
     }
     prevEliminatedCount.current = eliminatedCount;
   }, [state.players]);
+
+  // ワープが済んだプレイヤーは通常のホップ移動に戻す
+  useEffect(() => {
+    if (snapPlayerIds.length === 0) return;
+    const arrived = snapPlayerIds.every((id) => {
+      const p = state.players.find((pl) => pl.id === id);
+      return !p || (visualPositions[p.id] ?? p.position) === p.position;
+    });
+    if (arrived) setSnapPlayerIds([]);
+  }, [snapPlayerIds, visualPositions, state.players]);
 
   // リロードやタブの破棄でゲームが消えないよう、進行中は常に保存しておく。
   // セットアップ画面に戻った(＝新しいゲームを始めた)時点で保存を破棄する。
@@ -59,6 +72,20 @@ function App() {
   // 駒がまだ目的地までホップ移動中かどうか。移動アニメーションが終わるまで、
   // 家賃・カード等の自動発生ポップアップの表示を待たせる。
   const isAnimating = state.players.some((p) => (visualPositions[p.id] ?? p.position) !== p.position);
+
+  // 通知は駒の移動が終わってから、先頭の1件だけを出す。
+  const activeNotice = !isAnimating ? state.notices[0] ?? null : null;
+  // 通知を消化しきるまで、家賃確認やサイコロなどの操作は出さない(表示順の破綻を防ぐ)
+  const noticesBlocking = state.notices.length > 0;
+
+  const dismissNotice = () => {
+    const head = state.notices[0];
+    // 強制移動はワープさせる。ホップさせると「歩いて向かった」ように見えるため。
+    if (head?.kind === "transport") {
+      setSnapPlayerIds([head.playerId]);
+    }
+    dispatch({ type: "DISMISS_NOTICE" });
+  };
 
   return (
     <>
@@ -100,7 +127,7 @@ function App() {
             visualPositions={visualPositions}
             cardDraw={isAnimating ? null : state.lastCardDraw}
             overlay={
-              !isAnimating && !state.pendingDrink && !state.pendingTargetChoice ? (
+              !isAnimating && !noticesBlocking && !state.pendingDrink && !state.pendingTargetChoice ? (
                 <DiceControls state={state} dispatch={dispatch} />
               ) : undefined
             }
@@ -134,8 +161,13 @@ function App() {
         />
       )}
 
-      {!isAnimating && state.pendingTargetChoice && <TargetChoiceModal state={state} dispatch={dispatch} />}
-      {!isAnimating && state.pendingDrink && <DrinkResolutionModal state={state} dispatch={dispatch} />}
+      {activeNotice && <NoticeOverlay notice={activeNotice} state={state} onDismiss={dismissNotice} />}
+      {!isAnimating && !noticesBlocking && state.pendingTargetChoice && (
+        <TargetChoiceModal state={state} dispatch={dispatch} />
+      )}
+      {!isAnimating && !noticesBlocking && state.pendingDrink && (
+        <DrinkResolutionModal state={state} dispatch={dispatch} />
+      )}
       {state.phase === "finished" && <GameOverModal state={state} dispatch={dispatch} />}
     </>
   );

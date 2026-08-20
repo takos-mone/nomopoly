@@ -37,7 +37,7 @@ export function HowToPlayModal({ onClose }: HowToPlayModalProps) {
 
         <section>
           <h3>🎫 免除権</h3>
-          <p>GO(一軒目)を通過・到達すると獲得できるほか、抵当に入れた時にも得られる。飲みが発生した時に、使うかどうかを自分のタイミングで選べる。</p>
+          <p>盤面を1周してGOを通過するたびに+2 unit獲得できるほか、抵当に入れた時にも得られる。飲みが発生した時に、使うかどうかを自分のタイミングで選べる。</p>
         </section>
 
         <section>

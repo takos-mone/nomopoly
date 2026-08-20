@@ -24,7 +24,7 @@ export interface CardDef {
 }
 
 /**
- * チャンスカード 16枚。docs/cards.md の設計に対応。
+ * チャンスカード 24枚。docs/cards.md の設計に対応。
  * 「好きな相手を指名」系(target: "choose" / chooseOpponent: true)は
  * 実際にプレイヤーが対象を選ぶインタラクティブUIを介す。
  */
@@ -128,10 +128,64 @@ export const CHANCE_CARDS: CardDef[] = [
     description: "指名した相手と勝負(負けた方が3 unit飲む)",
     effects: [{ kind: "duel", amount: 3, chooseOpponent: true }],
   },
+  {
+    id: "c17",
+    name: "はしご酒",
+    description: "4マス進む",
+    effects: [{ kind: "moveRelative", steps: 4 }],
+  },
+  {
+    id: "c18",
+    name: "奢られ上手",
+    description: "最も所有物件が多いプレイヤーが2 unit飲み、自分の免除権+2",
+    effects: [
+      { kind: "drink", amount: 2, target: "richest" },
+      { kind: "exemption", amount: 2, target: "currentPlayer" },
+    ],
+  },
+  {
+    id: "c19",
+    name: "トイレの順番待ち",
+    description: "2マス戻る",
+    effects: [{ kind: "moveRelative", steps: -2 }],
+  },
+  {
+    id: "c20",
+    name: "オールする?",
+    description: "コイントス。表なら免除権+5、裏なら自分が4 unit飲む",
+    effects: [{ kind: "coinFlip", winExemption: 5, loseDrink: 4 }],
+  },
+  {
+    id: "c21",
+    name: "幹事の権限",
+    description: "指名した1人が4 unit飲む",
+    effects: [{ kind: "drink", amount: 4, target: "choose" }],
+  },
+  {
+    id: "c22",
+    name: "乾杯の音頭",
+    description: "全員が1 unit飲み、自分の免除権+2",
+    effects: [
+      { kind: "allDrink", amount: 1 },
+      { kind: "exemption", amount: 2, target: "currentPlayer" },
+    ],
+  },
+  {
+    id: "c23",
+    name: "記憶が飛んだ",
+    description: "自分が3 unit飲む",
+    effects: [{ kind: "drink", amount: 3, target: "currentPlayer" }],
+  },
+  {
+    id: "c24",
+    name: "常連の特権",
+    description: "所有物件を1つ無料でレベルアップし、もう一度サイコロを振れる",
+    effects: [{ kind: "freeUpgrade" }, { kind: "extraRoll" }],
+  },
 ];
 
 /**
- * 共同基金カード 16枚。全員への影響・公平性・救済をテーマにする。
+ * 共同基金カード 24枚。全員への影響・公平性・救済をテーマにする。
  */
 export const COMMUNITY_CHEST_CARDS: CardDef[] = [
   {
@@ -232,5 +286,65 @@ export const COMMUNITY_CHEST_CARDS: CardDef[] = [
     name: "街のお祭り",
     description: "ランダムな相手と飲み対決(負けた方が2 unit飲む)",
     effects: [{ kind: "duel", amount: 2 }],
+  },
+  {
+    id: "cc17",
+    name: "割り勘",
+    description: "全員が2 unit飲み、全員の免除権+1",
+    effects: [
+      { kind: "allDrink", amount: 2 },
+      { kind: "allExemption", amount: 1 },
+    ],
+  },
+  {
+    id: "cc18",
+    name: "幹事の苦労",
+    description: "自分の免除権+2、ランダムな1人が2 unit飲む",
+    effects: [
+      { kind: "exemption", amount: 2, target: "currentPlayer" },
+      { kind: "drink", amount: 2, target: "random" },
+    ],
+  },
+  {
+    id: "cc19",
+    name: "ラストオーダー",
+    description: "全員が3 unit飲み、全員の免除権+2",
+    effects: [
+      { kind: "allDrink", amount: 3 },
+      { kind: "allExemption", amount: 2 },
+    ],
+  },
+  {
+    id: "cc20",
+    name: "二日酔い注意報",
+    description: "最も累計飲酒量が多いプレイヤーの記録を5 unit減らす",
+    effects: [{ kind: "reduceRichestDrinkTotal", amount: 5 }],
+  },
+  {
+    id: "cc21",
+    name: "おしぼりサービス",
+    description: "全員の免除権+3",
+    effects: [{ kind: "allExemption", amount: 3 }],
+  },
+  {
+    id: "cc22",
+    name: "サプライズ",
+    description: "ランダムな1人が3 unit飲む",
+    effects: [{ kind: "drink", amount: 3, target: "random" }],
+  },
+  {
+    id: "cc23",
+    name: "みんなでジャンケン",
+    description: "ランダムな相手と勝負(負けた方が3 unit飲む)",
+    effects: [{ kind: "duel", amount: 3 }],
+  },
+  {
+    id: "cc24",
+    name: "はずれくじ",
+    description: "自分が4 unit飲むが、免除権+2",
+    effects: [
+      { kind: "drink", amount: 4, target: "currentPlayer" },
+      { kind: "exemption", amount: 2, target: "currentPlayer" },
+    ],
   },
 ];

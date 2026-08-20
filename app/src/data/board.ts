@@ -5,7 +5,7 @@ import type { Square } from "../types";
  * v2バランス調整(docs/decisions.md参照)で購入価格を全体的に引き下げている。
  */
 export const BOARD: Square[] = [
-  { id: 0, name: "一軒目(乾杯)", type: "go" },
+  { id: 0, name: "GO", type: "go" },
   { id: 1, name: "せんべろ屋 一号店", type: "property", colorGroup: "brown", price: 4 },
   { id: 2, name: "共同基金カード", type: "communityChest" },
   { id: 3, name: "せんべろ屋 二号店", type: "property", colorGroup: "brown", price: 4 },

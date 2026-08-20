@@ -1,4 +1,4 @@
-import type { GameState, LogEntry } from "../types";
+import type { GameState, LogEntry, Notice } from "../types";
 
 let logSeq = 0;
 export function nextLogId(): number {
@@ -8,6 +8,22 @@ export function nextLogId(): number {
 
 export function pushLog(log: LogEntry[], turn: number, playerId: number, message: string): LogEntry[] {
   return [...log, { id: nextLogId(), turn, playerId, message }];
+}
+
+/** 通知キューの末尾に1件積む。表示は先頭から順に行われる */
+export function pushNotice(state: GameState, notice: Notice): GameState {
+  return { ...state, notices: [...state.notices, notice] };
+}
+
+/** 「〇〇を手に入れた」通知を積む共通ヘルパー */
+export function pushGain(
+  state: GameState,
+  playerId: number,
+  icon: string,
+  title: string,
+  detail: string,
+): GameState {
+  return pushNotice(state, { kind: "gain", playerId, icon, title, detail });
 }
 
 /**

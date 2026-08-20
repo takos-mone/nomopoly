@@ -8,8 +8,11 @@
 import type { GameState } from "../types";
 
 const SAVE_STORAGE_KEY = "nomopoly-savegame";
-/** 保存形式のバージョン。GameStateの構造を変えたら上げる(古いセーブは読み捨てる) */
-const SAVE_VERSION = 1;
+/**
+ * 保存形式のバージョン。GameStateの構造を変えたら上げる(古いセーブは読み捨てる)。
+ * v2: 通知キュー(notices)の追加、GOマスの改称と免除権ルール変更に伴い v1 を破棄。
+ */
+const SAVE_VERSION = 2;
 
 interface SavePayload {
   version: number;
