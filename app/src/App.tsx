@@ -124,9 +124,7 @@ function App() {
           <Board
             state={state}
             onSelectSquare={setSelectedSquareId}
-            visualPositions={visualPositions}
-            cardDraw={isAnimating ? null : state.lastCardDraw}
-            overlay={
+            visualPositions={visualPositions}            overlay={
               !isAnimating && !noticesBlocking && !state.pendingDrink && !state.pendingTargetChoice ? (
                 <DiceControls state={state} dispatch={dispatch} />
               ) : undefined

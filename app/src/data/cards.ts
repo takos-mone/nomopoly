@@ -8,7 +8,10 @@ export type CardEffect =
   | { kind: "duel"; amount: number; chooseOpponent?: boolean }
   | { kind: "coinFlip"; winExemption: number; loseDrink: number }
   | { kind: "moveRelative"; steps: number }
-  | { kind: "moveToOwned" }
+  /** 自分の所有物件のうち、進行方向で最も近いマスへワープする */
+  | { kind: "moveToNearestOwned" }
+  /** 使い捨ての「タクシーチケット」を1枚渡す */
+  | { kind: "grantTaxiTicket" }
   | { kind: "extraRoll" }
   | { kind: "freeUpgrade" }
   | { kind: "reduceRichestDrinkTotal"; amount: number }
@@ -24,7 +27,7 @@ export interface CardDef {
 }
 
 /**
- * チャンスカード 24枚。docs/cards.md の設計に対応。
+ * チャンスカード 26枚。docs/cards.md の設計に対応。
  * 「好きな相手を指名」系(target: "choose" / chooseOpponent: true)は
  * 実際にプレイヤーが対象を選ぶインタラクティブUIを介す。
  */
@@ -113,8 +116,8 @@ export const CHANCE_CARDS: CardDef[] = [
   {
     id: "c14",
     name: "常連",
-    description: "自分の所有物件があるマスへワープ(なければ何も起きない)",
-    effects: [{ kind: "moveToOwned" }],
+    description: "自分の所有物件のうち、最も近いマスへワープ(なければ不発)",
+    effects: [{ kind: "moveToNearestOwned" }],
   },
   {
     id: "c15",
@@ -181,6 +184,18 @@ export const CHANCE_CARDS: CardDef[] = [
     name: "常連の特権",
     description: "所有物件を1つ無料でレベルアップし、もう一度サイコロを振れる",
     effects: [{ kind: "freeUpgrade" }, { kind: "extraRoll" }],
+  },
+  {
+    id: "c25",
+    name: "タクシーチケット",
+    description: "使い捨てのチケットを1枚獲得。タクシー待機所で休み中に使うと、すぐ抜け出せる",
+    effects: [{ kind: "grantTaxiTicket" }],
+  },
+  {
+    id: "c26",
+    name: "ヘパリーゼ",
+    description: "自分の免除権+3",
+    effects: [{ kind: "exemption", amount: 3, target: "currentPlayer" }],
   },
 ];
 

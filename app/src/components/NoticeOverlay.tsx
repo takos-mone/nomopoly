@@ -1,7 +1,14 @@
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
+import { useEffect, useState } from "react";
 import { describeSquare } from "../logic/squareInfo";
+import { playCardReveal, playCardSuspense } from "../logic/sound";
 import type { GameState, Notice } from "../types";
 import "./NoticeOverlay.css";
+
+/** カードをめくるまでの焦らし時間 */
+const CARD_TEASE_MS = 1500;
+/** コインが回っている時間 */
+const COIN_TEASE_MS = 1300;
 
 interface NoticeOverlayProps {
   notice: Notice;
@@ -43,6 +50,16 @@ function buildBody(notice: Notice, state: GameState): NoticeBody {
       return { tag: "獲得", icon: notice.icon, title: notice.title, detail: notice.detail, variant: "gain" };
     case "transport":
       return { tag: "強制移動", icon: "🚕", title: notice.title, detail: notice.detail, variant: "transport" };
+    case "skip":
+      return { tag: "一回休み", icon: "😴", title: notice.title, detail: notice.detail, variant: "skip" };
+    case "coinFlip":
+      return {
+        tag: "コイントス",
+        icon: notice.heads ? "🪙" : "🌑",
+        title: notice.title,
+        detail: notice.detail,
+        variant: notice.heads ? "gain" : "transport",
+      };
   }
 }
 
@@ -55,18 +72,91 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
   const body = buildBody(notice, state);
   const playerId = noticePlayerId(notice);
   const player = playerId !== null ? state.players.find((p) => p.id === playerId) : undefined;
+  const isCard = notice.kind === "card";
+  const isCoin = notice.kind === "coinFlip";
+  // カードとコイントスは一度伏せて見せ、少し焦らしてから結果を出す
+  const teasing = isCard || isCoin;
+  const [revealed, setRevealed] = useState(!teasing);
+
+  useEffect(() => {
+    if (!teasing) {
+      setRevealed(true);
+      return;
+    }
+    setRevealed(false);
+    playCardSuspense();
+    const timer = setTimeout(
+      () => {
+        setRevealed(true);
+        playCardReveal();
+      },
+      isCoin ? COIN_TEASE_MS : CARD_TEASE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [teasing, isCoin, notice]);
+
+  /** 焦らし中のタップは「早送り」。結果が出てからのタップで次へ進む */
+  const handleActivate = () => {
+    if (teasing && !revealed) {
+      setRevealed(true);
+      playCardReveal();
+      return;
+    }
+    onDismiss();
+  };
+
+  if (isCoin && !revealed) {
+    return (
+      <div
+        className="notice-overlay"
+        role="button"
+        tabIndex={0}
+        onClick={handleActivate}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") handleActivate();
+        }}
+      >
+        <div className="notice-coin">
+          <div className="notice-coin__disc">🪙</div>
+          <span className="notice-coin__hint">コインを投げています…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isCard && !revealed) {
+    return (
+      <div
+        className="notice-overlay"
+        role="button"
+        tabIndex={0}
+        onClick={handleActivate}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") handleActivate();
+        }}
+      >
+        <div className={`notice-cardback notice-cardback--${body.variant}`}>
+          <div className="notice-cardback__shine" />
+          <span className="notice-cardback__label">{body.tag}</span>
+          <div className="notice-cardback__mark">{body.icon}</div>
+          <span className="notice-cardback__hint">めくっています…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       className="notice-overlay"
       role="button"
       tabIndex={0}
-      onClick={onDismiss}
+      onClick={handleActivate}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onDismiss();
+        if (e.key === "Enter" || e.key === " ") handleActivate();
       }}
     >
-      <div className={`notice-card notice-card--${body.variant}`}>
+      <div className={`notice-card notice-card--${body.variant}${teasing ? " notice-card--revealed" : ""}`}>
+        {teasing && <div className="notice-card__burst" aria-hidden="true" />}
         <span className="notice-card__tag">{body.tag}</span>
         <div className="notice-card__icon">{body.icon}</div>
         <h3 className="notice-card__title">{body.title}</h3>

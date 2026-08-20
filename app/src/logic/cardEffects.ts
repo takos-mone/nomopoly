@@ -1,6 +1,6 @@
 import type { CardDef, CardEffect, CardTarget } from "../data/cards";
 import type { GameState } from "../types";
-import { createPendingDrink, pushGain, pushLog } from "./drinkEngine";
+import { createPendingDrink, pushGain, pushLog, pushNotice } from "./drinkEngine";
 
 function ownedCount(state: GameState, playerId: number): number {
   return state.squares.filter((sq) => state.ownership[sq.id] === playerId).length;
@@ -180,13 +180,24 @@ function applySingleEffect(
 
     case "coinFlip": {
       const heads = Math.random() < 0.5;
+      // 先にコイントスの通知を積む。表示側でコインを回してから結果を見せる。
+      const withFlip = pushNotice(state, {
+        kind: "coinFlip",
+        playerId: currentPlayerId,
+        heads,
+        title: heads ? "表!" : "裏…",
+        detail: heads
+          ? `「${cardName}」に勝った!免除権+${effect.winExemption}。`
+          : `「${cardName}」に負けた…${effect.loseDrink} unit飲む。`,
+      });
+
       if (heads) {
-        const players = state.players.map((p) =>
+        const players = withFlip.players.map((p) =>
           p.id === currentPlayerId ? { ...p, exemptionUnits: p.exemptionUnits + effect.winExemption } : p,
         );
-        const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 表!免除権+${effect.winExemption}。`);
+        const log = pushLog(withFlip.log, withFlip.turn, currentPlayerId, `「${cardName}」: 表!免除権+${effect.winExemption}。`);
         const gained = pushGain(
-          { ...state, players, log },
+          { ...withFlip, players, log },
           currentPlayerId,
           "🪙",
           `免除権 +${effect.winExemption} unit`,
@@ -194,8 +205,8 @@ function applySingleEffect(
         );
         return { state: gained, blocked: false };
       }
-      const logged = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 裏...`);
-      const next = createPendingDrink({ ...state, log: logged }, currentPlayerId, effect.loseDrink, `カード「${cardName}」(裏)`);
+      const logged = pushLog(withFlip.log, withFlip.turn, currentPlayerId, `「${cardName}」: 裏...`);
+      const next = createPendingDrink({ ...withFlip, log: logged }, currentPlayerId, effect.loseDrink, `カード「${cardName}」(裏)`);
       return { state: next, blocked: next.pendingDrink !== null };
     }
 
@@ -212,16 +223,40 @@ function applySingleEffect(
       return { state: { ...state, players, log, pendingLandingResolution: true }, blocked: false };
     }
 
-    case "moveToOwned": {
-      const owned = state.squares.filter((sq) => sq.type === "property" && state.ownership[sq.id] === currentPlayerId);
+    case "moveToNearestOwned": {
+      const owned = state.squares.filter((sq) => state.ownership[sq.id] === currentPlayerId);
       if (owned.length === 0) {
-        const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 所有物件がないため何も起きなかった。`);
+        const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 所有物件がないため不発。`);
         return { state: { ...state, log }, blocked: false };
       }
-      const target = owned[Math.floor(Math.random() * owned.length)];
+      // 進行方向(前方)で最も近いマスを選ぶ。今いるマス自身は選ばない。
+      const boardLength = state.squares.length;
+      const from = currentPlayer.position;
+      const distance = (id: number) => (id - from + boardLength) % boardLength || boardLength;
+      const target = owned.reduce((best, sq) => (distance(sq.id) < distance(best.id) ? sq : best));
       const players = state.players.map((p) => (p.id === currentPlayerId ? { ...p, position: target.id } : p));
-      const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で自分の物件「${target.name}」へワープ。`);
+      const log = pushLog(
+        state.log,
+        state.turn,
+        currentPlayerId,
+        `「${cardName}」で最も近い自分の物件「${target.name}」へワープ。`,
+      );
       return { state: { ...state, players, log, pendingLandingResolution: true }, blocked: false };
+    }
+
+    case "grantTaxiTicket": {
+      const players = state.players.map((p) =>
+        p.id === currentPlayerId ? { ...p, taxiTickets: p.taxiTickets + 1 } : p,
+      );
+      const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」でタクシーチケットを1枚獲得。`);
+      const gained = pushGain(
+        { ...state, players, log },
+        currentPlayerId,
+        "🎟️",
+        "タクシーチケット +1",
+        "タクシー待機所で休み中に使うと、飲まずにすぐ抜け出せる(使い捨て)。",
+      );
+      return { state: gained, blocked: false };
     }
 
     case "extraRoll": {

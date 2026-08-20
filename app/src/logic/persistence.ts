@@ -11,8 +11,9 @@ const SAVE_STORAGE_KEY = "nomopoly-savegame";
 /**
  * 保存形式のバージョン。GameStateの構造を変えたら上げる(古いセーブは読み捨てる)。
  * v2: 通知キュー(notices)の追加、GOマスの改称と免除権ルール変更に伴い v1 を破棄。
+ * v3: Player.skipNextTurn(boolean) を skipTurns(number) に変更、taxiTickets と pendingMoveSteps を追加。
  */
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 
 interface SavePayload {
   version: number;

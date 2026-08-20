@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { playDiceLand, playDiceTick, playPurchase } from "../logic/sound";
-import type { GameAction } from "../state/gameReducer";
+import { JAIL_ESCAPE_COST, type GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Dice } from "./Dice";
 
@@ -69,6 +69,7 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
   };
 
   const shownDice = rolledDice ?? state.lastDice ?? displayDice;
+  const jailTurnsLeft = current.skipTurns;
   const showDiceTray = rolling || rolledDice !== null || hasRolledThisTurn;
   const diceTotal = rolledDice ? rolledDice[0] + rolledDice[1] : state.lastDice ? state.lastDice[0] + state.lastDice[1] : null;
 
@@ -106,6 +107,31 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
             </button>
           </div>
         )}
+      </div>
+    );
+  }
+
+  // 休み中は移動できない。休むか、飲んで抜け出すかだけを選ばせる。
+  if (jailTurnsLeft > 0) {
+    return (
+      <div className="board-overlay">
+        <h3 className="board-overlay__title">{current.name}は一回休み</h3>
+        <p className="board-overlay__jail">
+          🚕 タクシー待機所で待機中(残り {jailTurnsLeft} ターン)
+        </p>
+        <div className="dice-actions">
+          {current.taxiTickets > 0 && (
+            <button className="primary-button" onClick={() => dispatch({ type: "USE_TAXI_TICKET" })}>
+              🎟️ タクシーチケットを使う ({current.taxiTickets}枚)
+            </button>
+          )}
+          <button className="primary-button" onClick={() => dispatch({ type: "PAY_TO_LEAVE_JAIL" })}>
+            {JAIL_ESCAPE_COST} unit飲んで出る
+          </button>
+          <button className="secondary-button" onClick={() => dispatch({ type: "SERVE_JAIL_TURN" })}>
+            今回は休む
+          </button>
+        </div>
       </div>
     );
   }

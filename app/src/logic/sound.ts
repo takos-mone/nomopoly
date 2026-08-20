@@ -88,6 +88,18 @@ export function playCardDraw(): void {
   playTone(1046.5, 0.12, "triangle", 0.06, 0.1);
 }
 
+/** カードをめくる前の焦らし。細かい音を刻んで期待感を煽る */
+export function playCardSuspense(): void {
+  for (let i = 0; i < 6; i++) {
+    playTone(520 + i * 60, 0.05, "square", i * 0.16, 0.05);
+  }
+}
+
+/** カードがめくれた瞬間のファンファーレ */
+export function playCardReveal(): void {
+  [659.25, 830.61, 987.77, 1318.51].forEach((freq, i) => playTone(freq, 0.22, "triangle", i * 0.07, 0.13));
+}
+
 export function playElimination(): void {
   playTone(400, 0.3, "sawtooth", 0, 0.1);
   playTone(300, 0.3, "sawtooth", 0.15, 0.1);

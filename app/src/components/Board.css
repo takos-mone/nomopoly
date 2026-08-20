@@ -33,6 +33,16 @@
   font-size: 15px;
 }
 
+.board-overlay__jail {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: var(--paper-warm);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
 @keyframes board-overlay-fade-in {
   from {
     opacity: 0;

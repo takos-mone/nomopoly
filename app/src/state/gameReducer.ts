@@ -34,13 +34,20 @@ export type GameAction =
   | { type: "USE_EXEMPTION" }
   | { type: "RESUME_GAME"; state: GameState }
   | { type: "DISMISS_NOTICE" }
+  /** 3 unit飲んでタクシー待機所の休みを打ち切る */
+  | { type: "PAY_TO_LEAVE_JAIL" }
+  /** 休みを1ターン消化して次の人へ回す */
+  | { type: "SERVE_JAIL_TURN" }
+  /** タクシーチケットを1枚使って休みを打ち切る(飲まなくてよい) */
+  | { type: "USE_TAXI_TICKET" }
   | { type: "RESET_GAME" };
 
-let cardDrawSeq = 0;
-function nextCardDrawSeq(): number {
-  cardDrawSeq += 1;
-  return cardDrawSeq;
-}
+/** 終電を逃したときの休みターン数 */
+export const JAIL_SKIP_TURNS = 3;
+/** タクシー会社の所有者は待たずに済む */
+export const TAXI_OWNER_JAIL_TURNS = 1;
+/** 休みを途中で切り上げるために飲む量 */
+export const JAIL_ESCAPE_COST = 3;
 
 
 export function createInitialState(): GameState {
@@ -60,8 +67,8 @@ export function createInitialState(): GameState {
     pendingCardQueue: [],
     pendingCardName: null,
     pendingLandingResolution: false,
-    lastCardDraw: null,
     notices: [],
+    pendingMoveSteps: null,
     eliminationThreshold: DEFAULT_ELIMINATION_THRESHOLD,
     phase: "setup",
   };
@@ -126,7 +133,6 @@ function resolveLanding(state: GameState): GameState {
   } else if (square.type === "chance" || square.type === "communityChest") {
     const pile = square.type;
     const card = drawRandomCard(pile);
-    next = { ...next, lastCardDraw: { pile, seq: nextCardDrawSeq() } };
     // 効果を適用する前にカードの内容を通知キューへ積む。
     // 効果側が積む通知(獲得など)は必ずこの後ろに並ぶので、
     // 「カードの説明 → その結果」の順で表示される。
@@ -142,22 +148,128 @@ function resolveLanding(state: GameState): GameState {
   } else if (square.type === "freeParking") {
     log("喫煙所で一服(効果なし)。");
   } else if (square.type === "goToJail") {
-    log("終電を逃してタクシー待機所へ強制移動。次のターンは休み。");
+    // タクシー会社の所有者はすぐ帰れる
+    const hasTaxi = next.squares.some(
+      (sq) => sq.type === "utility" && sq.name.includes("タクシー") && next.ownership[sq.id] === player.id,
+    );
+    const skipTurns = hasTaxi ? TAXI_OWNER_JAIL_TURNS : JAIL_SKIP_TURNS;
+    log(`終電を逃してタクシー待機所へ強制移動。${skipTurns}ターン休み。`);
     // ここでは動かさない。通知を消した瞬間に一気にワープさせることで、
     // 「このマスに止まった」→「飛ばされた」の順で見せる。
     next = pushNotice(next, {
       kind: "transport",
       playerId: player.id,
       toSquareId: JAIL_SQUARE_ID,
-      skipTurn: true,
+      skipTurns,
       title: "終電を逃した!",
-      detail: `${player.name}はタクシー待機所へ強制移動。次のターンは休みになる。`,
+      detail: hasTaxi
+        ? `${player.name}はタクシー待機所へ。タクシー会社を持っているので${skipTurns}ターンで出られる。`
+        : `${player.name}はタクシー待機所へ。${skipTurns}ターン休み。${JAIL_ESCAPE_COST} unit飲めばすぐ出られる。`,
     });
   } else if (square.type === "go") {
     log("GO(自宅)に到着!");
   }
 
   return next;
+}
+
+/**
+ * 手番を次の生存プレイヤーへ渡す。
+ *
+ * 休み中(skipTurns > 0)のプレイヤーも「飛ばさずに」手番を渡す。
+ * 自動でスキップしてしまうと、本人が「3 unit飲んで抜け出す」を選ぶ機会がなくなるため。
+ * 代わりに、手番が来た時点で一回休みである旨を通知し、盤面では休み専用のパネルを出す。
+ */
+function advanceToNextPlayer(state: GameState): GameState {
+  const nextIndex = (() => {
+    let idx = state.currentPlayerIndex;
+    for (let i = 0; i < state.players.length; i++) {
+      idx = (idx + 1) % state.players.length;
+      if (!state.players[idx].eliminated) return idx;
+    }
+    return state.currentPlayerIndex;
+  })();
+
+  const next: GameState = {
+    ...state,
+    turn: state.turn + 1,
+    currentPlayerIndex: nextIndex,
+    lastDice: null,
+  };
+
+  const p = next.players[nextIndex];
+  if (p.skipTurns > 0) {
+    return pushNotice(next, {
+      kind: "skip",
+      playerId: p.id,
+      remainingTurns: p.skipTurns,
+      title: `${p.name}は一回休み`,
+      detail: `タクシー待機所で待機中(残り${p.skipTurns}ターン)。${JAIL_ESCAPE_COST} unit飲めば今すぐ抜け出せる。`,
+    });
+  }
+  return next;
+}
+
+/**
+ * プレイヤーを steps マス進める。
+ *
+ * 途中でGOを通過する場合はいったんGOで止め、免除権の獲得通知を出したうえで
+ * 残りのマス数を `pendingMoveSteps` に退避する。通知を閉じた時点で
+ * (DISMISS_NOTICE から) 再びこの関数が呼ばれ、残りを進んで着地処理へ入る。
+ * こうすることで「GOを踏んだ瞬間にご褒美が出て、それから続きを進む」流れになる。
+ */
+function advancePlayer(state: GameState, playerId: number, steps: number): GameState {
+  const player = state.players.find((p) => p.id === playerId)!;
+  const boardLength = state.squares.length;
+  const oldPos = player.position;
+  const stepsToGo = (boardLength - oldPos) % boardLength; // GOまでの距離(GO上なら0)
+
+  // GOを「通過」する(=踏み越えて先へ進む)ケースだけ途中で止める。
+  // ちょうどGOに着地する場合は普通に着地処理へ進む。
+  const passesGoMidway = stepsToGo > 0 && steps > stepsToGo;
+
+  if (passesGoMidway) {
+    const remaining = steps - stepsToGo;
+    const movedToGo = state.players.map((p) =>
+      p.id === playerId
+        ? { ...p, position: GO_SQUARE_ID, exemptionUnits: p.exemptionUnits + GO_PASS_EXEMPTION }
+        : p,
+    );
+    let next: GameState = {
+      ...state,
+      players: movedToGo,
+      pendingMoveSteps: remaining,
+      log: pushLog(state.log, state.turn, playerId, `GOを通過して免除権+${GO_PASS_EXEMPTION}。`),
+    };
+    next = pushGain(
+      next,
+      playerId,
+      "🎫",
+      `免除権 +${GO_PASS_EXEMPTION} unit`,
+      `GO(自宅)を通過!このあと残り${remaining}マス進みます。`,
+    );
+    return next;
+  }
+
+  const newPos = (oldPos + steps) % boardLength;
+  const landedGo = newPos === GO_SQUARE_ID;
+  const gain = landedGo ? GO_LAND_EXEMPTION : 0;
+
+  let next: GameState = {
+    ...state,
+    pendingMoveSteps: null,
+    players: state.players.map((p) =>
+      p.id === playerId ? { ...p, position: newPos, exemptionUnits: p.exemptionUnits + gain } : p,
+    ),
+  };
+  if (gain > 0) {
+    next = {
+      ...next,
+      log: pushLog(next.log, next.turn, playerId, `GOに到達して免除権+${gain}。`),
+    };
+    next = pushGain(next, playerId, "🎫", `免除権 +${gain} unit`, "GO(自宅)にちょうど到着!");
+  }
+  return resolveLanding(next);
 }
 
 function calcRentFor(state: GameState, square: PropertySquare | ConvenienceSquare, ownerId: number): number {
@@ -207,24 +319,31 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         ...action.state,
         squares: createInitialState().squares,
         notices: [],
-        lastCardDraw: null,
-      };
+          };
 
     case "DISMISS_NOTICE": {
       const [head, ...rest] = state.notices;
       if (!head) return state;
       const dismissed: GameState = { ...state, notices: rest };
+
       // 強制移動は通知を閉じた瞬間に実行する(演出と実際の移動を一致させる)
       if (head.kind === "transport") {
         return {
           ...dismissed,
           players: dismissed.players.map((p) =>
             p.id === head.playerId
-              ? { ...p, position: head.toSquareId, skipNextTurn: head.skipTurn || p.skipNextTurn }
+              ? { ...p, position: head.toSquareId, skipTurns: Math.max(p.skipTurns, head.skipTurns) }
               : p,
           ),
         };
       }
+
+      // GO通過で中断していた移動を再開する。通知をすべて見終えてから進める。
+      if (dismissed.pendingMoveSteps !== null && rest.length === 0) {
+        const mover = currentPlayer(dismissed);
+        return advancePlayer({ ...dismissed, pendingMoveSteps: null }, mover.id, dismissed.pendingMoveSteps);
+      }
+
       return dismissed;
     }
 
@@ -235,12 +354,13 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         position: 0,
         totalUnitsDrunk: 0,
         exemptionUnits: 0,
-        skipNextTurn: false,
+        skipTurns: 0,
         eliminated: false,
         deferredDrinks: [],
         incomingMultiplier: 1,
         incomingShield: false,
         outgoingMultiplier: 1,
+        taxiTickets: 0,
       }));
       return {
         ...createInitialState(),
@@ -258,46 +378,65 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       const [d1, d2] = action.dice ?? [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
       const player = currentPlayer(state);
       const steps = d1 + d2;
-      const oldPos = player.position;
-      const newPos = (oldPos + steps) % BOARD.length;
-      // 盤面を1周して GO を「通過」した場合のみ。GO から出発しただけでは通過ではない
-      // (以前は oldPos === 0 も通過扱いにしており、全員が初回ロールで免除権を得ていた)。
-      const passedGo = newPos < oldPos;
-      const landedGo = newPos === GO_SQUARE_ID;
-
-      let exemptionGain = 0;
-      if (landedGo) exemptionGain = GO_LAND_EXEMPTION;
-      else if (passedGo) exemptionGain = GO_PASS_EXEMPTION;
-
-      const updatedPlayers = state.players.map((p) =>
-        p.id === player.id
-          ? { ...p, position: newPos, exemptionUnits: p.exemptionUnits + exemptionGain }
-          : p,
-      );
-
-      let next: GameState = {
+      const withLog: GameState = {
         ...state,
-        players: updatedPlayers,
         lastDice: [d1, d2],
+        log: pushLog(state.log, state.turn, player.id, `${player.name}はサイコロで${d1}+${d2}=${steps}進んだ。`),
       };
-      next = {
-        ...next,
-        log: pushLog(next.log, next.turn, player.id, `${player.name}はサイコロで${d1}+${d2}=${steps}進んだ。`),
-      };
-      if (exemptionGain > 0) {
-        next = {
-          ...next,
-          log: pushLog(next.log, next.turn, player.id, `GOを1周して免除権+${exemptionGain}。`),
-        };
-        next = pushGain(
-          next,
+      return advancePlayer(withLog, player.id, steps);
+    }
+
+    case "SERVE_JAIL_TURN": {
+      if (state.pendingDrink || state.pendingTargetChoice || state.notices.length > 0) return state;
+      const player = currentPlayer(state);
+      if (player.skipTurns <= 0) return state;
+      const remaining = player.skipTurns - 1;
+      const served: GameState = {
+        ...state,
+        players: state.players.map((p) => (p.id === player.id ? { ...p, skipTurns: remaining } : p)),
+        log: pushLog(
+          state.log,
+          state.turn,
           player.id,
-          "🎫",
-          `免除権 +${exemptionGain} unit`,
-          `GOを1周した!免除権は飲みが発生したときに自分の意思で使える。`,
-        );
-      }
-      return resolveLanding(next);
+          `${player.name}はタクシー待機所で休んだ。残り${remaining}ターン。`,
+        ),
+      };
+      return advanceToNextPlayer(served);
+    }
+
+    case "USE_TAXI_TICKET": {
+      if (state.pendingDrink || state.pendingTargetChoice || state.notices.length > 0) return state;
+      const player = currentPlayer(state);
+      if (player.skipTurns <= 0 || player.taxiTickets <= 0) return state;
+      return {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === player.id ? { ...p, skipTurns: 0, taxiTickets: p.taxiTickets - 1 } : p,
+        ),
+        log: pushLog(
+          state.log,
+          state.turn,
+          player.id,
+          `${player.name}はタクシーチケットを使って待機所を抜け出した(残り${player.taxiTickets - 1}枚)。`,
+        ),
+      };
+    }
+
+    case "PAY_TO_LEAVE_JAIL": {
+      if (state.pendingDrink || state.pendingTargetChoice || state.notices.length > 0) return state;
+      const player = currentPlayer(state);
+      if (player.skipTurns <= 0) return state;
+      const cleared: GameState = {
+        ...state,
+        players: state.players.map((p) => (p.id === player.id ? { ...p, skipTurns: 0 } : p)),
+        log: pushLog(
+          state.log,
+          state.turn,
+          player.id,
+          `${player.name}は${JAIL_ESCAPE_COST} unit飲んでタクシー待機所を抜け出した。`,
+        ),
+      };
+      return createPendingDrink(cleared, player.id, JAIL_ESCAPE_COST, "タクシー待機所からの脱出");
     }
 
     case "CONFIRM_PURCHASE": {
@@ -369,31 +508,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       if (alive.length <= 1) {
         return { ...state, phase: "finished" };
       }
-      let nextIndex = state.currentPlayerIndex;
-      let players = state.players;
-      let log = state.log;
-      let turn = state.turn;
-      do {
-        nextIndex = (nextIndex + 1) % players.length;
-        turn += 1;
-        const p = players[nextIndex];
-        if (p.eliminated) continue;
-        if (p.skipNextTurn) {
-          players = players.map((pl) => (pl.id === p.id ? { ...pl, skipNextTurn: false } : pl));
-          log = pushLog(log, turn, p.id, `${p.name}は休み(タクシー待機所)。`);
-          continue;
-        }
-        break;
-      } while (true);
-
-      return {
-        ...state,
-        players,
-        log,
-        turn,
-        currentPlayerIndex: nextIndex,
-        lastDice: null,
-      };
+      return advanceToNextPlayer(state);
     }
 
     case "CONFIRM_DRINK": {

@@ -72,12 +72,15 @@ export interface Player {
   position: number; // square index 0-39
   totalUnitsDrunk: number; // 記録用の累計飲酒量(演出・スコア用途)
   exemptionUnits: number; // 「免除権」の残高(GO通過や抵当入れで得る)。飲みが発生した時に自分の意思で使うか選べる
-  skipNextTurn: boolean;
+  /** 残りの休みターン数(0なら通常どおり行動できる)。終電を逃すと3になる */
+  skipTurns: number;
   eliminated: boolean;
   deferredDrinks: number[]; // 「後で飲む」に回した分の一覧(unit)
   incomingMultiplier: number; // 次に自分が受ける飲酒量の倍率(倍プッシュ)。使用後1に戻る
   incomingShield: boolean; // 次に自分が受ける飲酒を1回無効化(今日は休み)。使用後false
   outgoingMultiplier: number; // 次にカードで誰かに飲ませる量の倍率(今夜は無礼講)。使用後1に戻る
+  /** 「タクシーチケット」の所持枚数。タクシー待機所の休みを1回ぶん帳消しにできる使い捨て */
+  taxiTickets: number;
 }
 
 /** マスID -> 所有プレイヤーID (未所有はundefined) */
@@ -114,11 +117,6 @@ export interface LogEntry {
 
 export type CardPileType = "chance" | "communityChest";
 
-export interface CardDrawEvent {
-  pile: CardPileType;
-  seq: number;
-}
-
 /**
  * プレイヤーにタップで送ってもらう通知。着地説明・カード効果・獲得・強制移動を
  * 1本のキューで順番に見せる(個別のポップアップを増やすと表示順が破綻するため)。
@@ -135,10 +133,15 @@ export type Notice =
       kind: "transport";
       playerId: number;
       toSquareId: number;
-      skipTurn: boolean;
+      /** 到着後に課される休みターン数 */
+      skipTurns: number;
       title: string;
       detail: string;
-    };
+    }
+  /** 休みでターンを飛ばされたことを本人に知らせる */
+  | { kind: "skip"; playerId: number; remainingTurns: number; title: string; detail: string }
+  /** コイントス。表示側でコインを回してから結果を見せる */
+  | { kind: "coinFlip"; playerId: number; heads: boolean; title: string; detail: string };
 
 export interface GameState {
   players: Player[];
@@ -158,9 +161,13 @@ export interface GameState {
   pendingCardName: string | null;
   /** カード効果で移動した後、着地マスの家賃・購入・カード効果を連鎖解決する必要があるか */
   pendingLandingResolution: boolean;
-  lastCardDraw: CardDrawEvent | null;
   /** 先頭から順にタップで消化していく通知キュー */
   notices: Notice[];
+  /**
+   * GO通過で一旦停止した移動の残りマス数。
+   * 免除権獲得の通知をGOの上で見せてから、続きのマスを進むために使う。
+   */
+  pendingMoveSteps: number | null;
   /** 累計飲酒量がこのunitに達したプレイヤーは脱落する(セットアップ画面でカスタマイズ可能) */
   eliminationThreshold: number;
   phase: "setup" | "playing" | "finished";

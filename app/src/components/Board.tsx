@@ -1,20 +1,18 @@
 import type { ReactNode } from "react";
-import type { CardDrawEvent, GameState } from "../types";
+import type { GameState } from "../types";
 import { COLOR_GROUP_HEX } from "../data/board";
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 import { squareGridPosition } from "../logic/layout";
-import { CardDrawOverlay } from "./CardDrawOverlay";
 import "./Board.css";
 
 interface BoardProps {
   state: GameState;
   onSelectSquare: (squareId: number) => void;
   visualPositions: Record<number, number>;
-  cardDraw: CardDrawEvent | null;
   overlay?: ReactNode;
 }
 
-export function Board({ state, onSelectSquare, visualPositions, cardDraw, overlay }: BoardProps) {
+export function Board({ state, onSelectSquare, visualPositions, overlay }: BoardProps) {
   const currentPlayerId = state.players[state.currentPlayerIndex]?.id;
 
   return (
@@ -98,7 +96,6 @@ export function Board({ state, onSelectSquare, visualPositions, cardDraw, overla
             <span>共同基金</span>
           </div>
         </div>
-        <CardDrawOverlay cardDraw={cardDraw} />
       </div>
       {overlay}
     </div>
