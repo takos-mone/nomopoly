@@ -24,7 +24,8 @@ export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalPr
     (sq) => state.ownership[sq.id] === player.id && sq.type !== "chance" && sq.type !== "communityChest",
   );
   const mortgageable = owned.filter((sq) => !state.mortgages[sq.id] && "price" in sq);
-  const otherPlayers = state.players.filter((p) => p.id !== player.id);
+  // 脱落したプレイヤーには交渉で肩代わりさせられない(ゲームから抜けているため)
+  const otherPlayers = state.players.filter((p) => p.id !== player.id && !p.eliminated);
 
   const close = () => {
     setMode("main");

@@ -6,27 +6,45 @@ function ownedCount(state: GameState, playerId: number): number {
   return state.squares.filter((sq) => state.ownership[sq.id] === playerId).length;
 }
 
-function resolveTargetId(state: GameState, target: CardTarget, currentPlayerId: number): number {
-  const players = state.players;
+/**
+ * 脱落したプレイヤーはゲームから抜けているので、いかなる指名の対象にもしない。
+ * 脱落ラインは「これ以上飲ませない」ための仕組みなので、ここを漏らすと
+ * 脱落済みの人にカードで飲ませてしまう。
+ */
+function livingOthers(state: GameState, currentPlayerId: number) {
+  return state.players.filter((p) => p.id !== currentPlayerId && !p.eliminated);
+}
+
+/** 指名対象を決める。対象が存在しない場合は null(効果は不発扱い) */
+function resolveTargetId(state: GameState, target: CardTarget, currentPlayerId: number): number | null {
   if (target === "currentPlayer") return currentPlayerId;
 
+  // richest / poorest はカード文面が「最も所有物件が多い/少ないプレイヤー」であり
+  // 自分自身も対象になりうる。所有物件数で判定(タイは先頭を採用)。
+  if (target === "richest" || target === "poorest") {
+    const living = state.players.filter((p) => !p.eliminated);
+    if (living.length === 0) return null;
+    const ranked = [...living].sort((a, b) => {
+      const diff = ownedCount(state, b.id) - ownedCount(state, a.id);
+      return target === "richest" ? diff : -diff;
+    });
+    return ranked[0].id;
+  }
+
+  // random / leftNeighbor は「自分以外の誰か」を指す
+  const others = livingOthers(state, currentPlayerId);
+  if (others.length === 0) return null;
+
   if (target === "random") {
-    const others = players.filter((p) => p.id !== currentPlayerId);
     return others[Math.floor(Math.random() * others.length)].id;
   }
 
-  if (target === "leftNeighbor") {
-    const idx = players.findIndex((p) => p.id === currentPlayerId);
-    const leftIdx = (idx - 1 + players.length) % players.length;
-    return players[leftIdx].id;
-  }
-
-  // richest / poorest: 所有物件数で判定(タイは先頭を採用)
-  const ranked = [...players].sort((a, b) => {
-    const diff = ownedCount(state, b.id) - ownedCount(state, a.id);
-    return target === "richest" ? diff : -diff;
-  });
-  return ranked[0].id;
+  // leftNeighbor: 生存者だけを並びとみなして左隣を取る(脱落者は席を外している扱い)
+  const living = state.players.filter((p) => !p.eliminated);
+  const idx = living.findIndex((p) => p.id === currentPlayerId);
+  if (idx === -1) return others[0].id;
+  const left = living[(idx - 1 + living.length) % living.length];
+  return left.id === currentPlayerId ? others[0].id : left.id;
 }
 
 function resolveDuel(
@@ -71,6 +89,14 @@ export function resolveChosenTarget(
   return state;
 }
 
+/** 指名できる生存プレイヤーがいなかった場合の不発ログ */
+function noTargetState(state: GameState, currentPlayerId: number, cardName: string): GameState {
+  return {
+    ...state,
+    log: pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」: 対象になるプレイヤーがおらず不発。`),
+  };
+}
+
 /** 単一の効果を適用する。pendingDrinkがセットされた場合は blocked:true を返す */
 function applySingleEffect(
   state: GameState,
@@ -90,6 +116,7 @@ function applySingleEffect(
         return { state: next, blocked: true };
       }
       const targetId = resolveTargetId(state, effect.target, currentPlayerId);
+      if (targetId === null) return { state: noTargetState(state, currentPlayerId, cardName), blocked: false };
       const next = createPendingDrink(state, targetId, effect.amount, `カード「${cardName}」`, {
         sourcePlayerId: targetId !== currentPlayerId ? currentPlayerId : undefined,
       });
@@ -97,13 +124,17 @@ function applySingleEffect(
     }
 
     case "allDrink": {
-      const players = state.players.map((p) => ({ ...p, totalUnitsDrunk: p.totalUnitsDrunk + effect.amount }));
+      // 脱落者はゲームから抜けているので「全員」に含めない
+      const players = state.players.map((p) =>
+        p.eliminated ? p : { ...p, totalUnitsDrunk: p.totalUnitsDrunk + effect.amount },
+      );
       const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で全員が${effect.amount} unit飲んだ。`);
       return { state: { ...state, players, log }, blocked: false };
     }
 
     case "exemption": {
       const targetId = resolveTargetId(state, effect.target, currentPlayerId);
+      if (targetId === null) return { state: noTargetState(state, currentPlayerId, cardName), blocked: false };
       const targetName = state.players.find((p) => p.id === targetId)!.name;
       const players = state.players.map((p) => (p.id === targetId ? { ...p, exemptionUnits: p.exemptionUnits + effect.amount } : p));
       const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で${targetName}の免除権+${effect.amount}。`);
@@ -111,7 +142,9 @@ function applySingleEffect(
     }
 
     case "allExemption": {
-      const players = state.players.map((p) => ({ ...p, exemptionUnits: p.exemptionUnits + effect.amount }));
+      const players = state.players.map((p) =>
+        p.eliminated ? p : { ...p, exemptionUnits: p.exemptionUnits + effect.amount },
+      );
       const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で全員の免除権+${effect.amount}。`);
       return { state: { ...state, players, log }, blocked: false };
     }
@@ -124,7 +157,8 @@ function applySingleEffect(
         };
         return { state: next, blocked: true };
       }
-      const others = state.players.filter((p) => p.id !== currentPlayerId);
+      const others = livingOthers(state, currentPlayerId);
+      if (others.length === 0) return { state: noTargetState(state, currentPlayerId, cardName), blocked: false };
       const opponent = others[Math.floor(Math.random() * others.length)];
       const next = resolveDuel(state, currentPlayerId, opponent.id, effect.amount, cardName);
       return { state: next, blocked: next.pendingDrink !== null };
@@ -198,7 +232,9 @@ function applySingleEffect(
     }
 
     case "reduceRichestDrinkTotal": {
-      const target = [...state.players].sort((a, b) => b.totalUnitsDrunk - a.totalUnitsDrunk)[0];
+      const living = state.players.filter((p) => !p.eliminated);
+      if (living.length === 0) return { state: noTargetState(state, currentPlayerId, cardName), blocked: false };
+      const target = [...living].sort((a, b) => b.totalUnitsDrunk - a.totalUnitsDrunk)[0];
       const players = state.players.map((p) =>
         p.id === target.id ? { ...p, totalUnitsDrunk: Math.max(0, p.totalUnitsDrunk - effect.amount) } : p,
       );

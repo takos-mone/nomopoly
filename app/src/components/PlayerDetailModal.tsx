@@ -37,7 +37,10 @@ export function PlayerDetailModal({ player, state, dispatch, onClose, onSelectSq
             {player.deferredDrinks.map((amount, i) => (
               <li key={i}>
                 {amount} unit
-                <button className="small-button" onClick={() => dispatch({ type: "RESOLVE_DEFERRED", index: i })}>
+                <button
+                  className="small-button"
+                  onClick={() => dispatch({ type: "RESOLVE_DEFERRED", playerId: player.id, index: i })}
+                >
                   今飲む
                 </button>
               </li>

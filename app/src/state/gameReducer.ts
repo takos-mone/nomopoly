@@ -27,7 +27,7 @@ export type GameAction =
   | { type: "MORTGAGE_FOR_DRINK"; squareId: number }
   | { type: "NEGOTIATE_TRANSFER"; squareId: number; targetPlayerId: number }
   | { type: "NEGOTIATE_PENALTY_GAME" }
-  | { type: "RESOLVE_DEFERRED"; index: number }
+  | { type: "RESOLVE_DEFERRED"; playerId: number; index: number }
   | { type: "REPAY_MORTGAGE"; squareId: number }
   | { type: "CHOOSE_TARGET"; playerId: number }
   | { type: "USE_EXEMPTION" }
@@ -462,8 +462,10 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "RESOLVE_DEFERRED": {
-      const player = state.players.find((p) => p.deferredDrinks.length > action.index);
-      if (!player) return state;
+      // 対象は必ず action.playerId で特定する。以前は「先送り分を持つ最初のプレイヤー」を
+      // 拾っており、別人の先送り分を消化してしまっていた。
+      const player = state.players.find((p) => p.id === action.playerId);
+      if (!player || action.index < 0 || action.index >= player.deferredDrinks.length) return state;
       const amount = player.deferredDrinks[action.index];
       const players = state.players.map((p) =>
         p.id === player.id
