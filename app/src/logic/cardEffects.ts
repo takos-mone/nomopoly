@@ -1,6 +1,7 @@
 import type { CardDef, CardEffect, CardTarget } from "../data/cards";
 import type { GameState } from "../types";
 import { createPendingDrink, pushGain, pushLog, pushNotice } from "./drinkEngine";
+import { GO_PASS_EXEMPTION } from "./rent";
 
 function ownedCount(state: GameState, playerId: number): number {
   return state.squares.filter((sq) => state.ownership[sq.id] === playerId).length;
@@ -89,6 +90,36 @@ export function resolveChosenTarget(
   return state;
 }
 
+/**
+ * カード効果でプレイヤーを移動させる。前進してGOを跨いだ場合は
+ * サイコロで進んだときと同じく免除権を与える(移動手段によって損得が変わらないように)。
+ * 後退でGOを通り過ぎた場合は「通過」ではないので与えない。
+ */
+function movePlayerTo(
+  state: GameState,
+  playerId: number,
+  from: number,
+  to: number,
+  forward: boolean,
+  cardName: string,
+): GameState {
+  const passedGo = forward && to < from;
+  const gain = passedGo ? GO_PASS_EXEMPTION : 0;
+  const moved: GameState = {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === playerId ? { ...p, position: to, exemptionUnits: p.exemptionUnits + gain } : p,
+    ),
+  };
+  if (gain === 0) return moved;
+
+  const withLog: GameState = {
+    ...moved,
+    log: pushLog(moved.log, moved.turn, playerId, `「${cardName}」の移動でGOを通過して免除権+${gain}。`),
+  };
+  return pushGain(withLog, playerId, "🎫", `免除権 +${gain} unit`, "移動の途中でGO(自宅)を通過した!");
+}
+
 /** 指名できる生存プレイヤーがいなかった場合の不発ログ */
 function noTargetState(state: GameState, currentPlayerId: number, cardName: string): GameState {
   return {
@@ -123,13 +154,16 @@ function applySingleEffect(
       return { state: next, blocked: next.pendingDrink !== null };
     }
 
-    case "allDrink": {
-      // 脱落者はゲームから抜けているので「全員」に含めない
-      const players = state.players.map((p) =>
-        p.eliminated ? p : { ...p, totalUnitsDrunk: p.totalUnitsDrunk + effect.amount },
-      );
-      const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で全員が${effect.amount} unit飲んだ。`);
-      return { state: { ...state, players, log }, blocked: false };
+    // allDrink は processCardEffectQueue で1人分ずつ drinkPlayer に展開されるため、
+    // ここへ来ることはない(到達したら何もしない)。
+    case "allDrink":
+      return { state, blocked: false };
+
+    case "drinkPlayer": {
+      const target = state.players.find((p) => p.id === effect.playerId);
+      if (!target || target.eliminated) return { state, blocked: false };
+      const next = createPendingDrink(state, effect.playerId, effect.amount, `カード「${cardName}」(${effect.label})`);
+      return { state: next, blocked: next.pendingDrink !== null };
     }
 
     case "exemption": {
@@ -212,15 +246,16 @@ function applySingleEffect(
 
     case "moveRelative": {
       const boardLength = state.squares.length;
-      const newPos = (currentPlayer.position + effect.steps + boardLength) % boardLength;
-      const players = state.players.map((p) => (p.id === currentPlayerId ? { ...p, position: newPos } : p));
+      const from = currentPlayer.position;
+      const newPos = (from + effect.steps + boardLength) % boardLength;
+      const moved = movePlayerTo(state, currentPlayerId, from, newPos, effect.steps > 0, cardName);
       const log = pushLog(
-        state.log,
-        state.turn,
+        moved.log,
+        moved.turn,
         currentPlayerId,
         `「${cardName}」で${state.squares[newPos].name}へ移動。`,
       );
-      return { state: { ...state, players, log, pendingLandingResolution: true }, blocked: false };
+      return { state: { ...moved, log, pendingLandingResolution: true }, blocked: false };
     }
 
     case "moveToNearestOwned": {
@@ -234,14 +269,15 @@ function applySingleEffect(
       const from = currentPlayer.position;
       const distance = (id: number) => (id - from + boardLength) % boardLength || boardLength;
       const target = owned.reduce((best, sq) => (distance(sq.id) < distance(best.id) ? sq : best));
-      const players = state.players.map((p) => (p.id === currentPlayerId ? { ...p, position: target.id } : p));
+      // 常に前方へ進むワープなので、GOを跨いだ場合は通過扱いになる
+      const moved = movePlayerTo(state, currentPlayerId, from, target.id, true, cardName);
       const log = pushLog(
-        state.log,
-        state.turn,
+        moved.log,
+        moved.turn,
         currentPlayerId,
         `「${cardName}」で最も近い自分の物件「${target.name}」へワープ。`,
       );
-      return { state: { ...state, players, log, pendingLandingResolution: true }, blocked: false };
+      return { state: { ...moved, log, pendingLandingResolution: true }, blocked: false };
     }
 
     case "grantTaxiTicket": {
@@ -315,19 +351,37 @@ function applySingleEffect(
       const players = state.players.map((p) =>
         p.id === currentPlayerId ? { ...p, incomingMultiplier: effect.multiplier } : p,
       );
-      return { state: { ...state, players }, blocked: false };
+      const log = pushLog(
+        state.log,
+        state.turn,
+        currentPlayerId,
+        `${currentPlayer.name}は次に受ける飲酒が×${effect.multiplier}になった(1回で解除)。`,
+      );
+      return { state: { ...state, players, log }, blocked: false };
     }
 
     case "setOutgoingMultiplier": {
       const players = state.players.map((p) =>
         p.id === currentPlayerId ? { ...p, outgoingMultiplier: effect.multiplier } : p,
       );
-      return { state: { ...state, players }, blocked: false };
+      const log = pushLog(
+        state.log,
+        state.turn,
+        currentPlayerId,
+        `${currentPlayer.name}は次に誰かに飲ませる量が×${effect.multiplier}になった(1回で解除)。`,
+      );
+      return { state: { ...state, players, log }, blocked: false };
     }
 
     case "setIncomingShield": {
       const players = state.players.map((p) => (p.id === currentPlayerId ? { ...p, incomingShield: true } : p));
-      return { state: { ...state, players }, blocked: false };
+      const log = pushLog(
+        state.log,
+        state.turn,
+        currentPlayerId,
+        `${currentPlayer.name}は次に受ける飲みを1回無効化できるようになった。`,
+      );
+      return { state: { ...state, players, log }, blocked: false };
     }
 
     default:
@@ -346,6 +400,27 @@ export function processCardEffectQueue(
   const remaining = [...queue];
   while (remaining.length > 0) {
     const effect = remaining.shift()!;
+
+    // 「全員が飲む」は1人分ずつに展開してキューの先頭へ戻す。
+    // まとめて加算してしまうと飲み確認ポップアップを通せず、
+    // 免除権・「今日は休み」・「倍プッシュ」がすべて無視されてしまう。
+    if (effect.kind === "allDrink") {
+      const living = next.players.filter((p) => !p.eliminated);
+      remaining.unshift(
+        ...living.map<CardEffect>((p) => ({
+          kind: "drinkPlayer",
+          amount: effect.amount,
+          playerId: p.id,
+          label: "全員",
+        })),
+      );
+      next = {
+        ...next,
+        log: pushLog(next.log, next.turn, currentPlayerId, `「${cardName}」で全員が${effect.amount} unit飲む。`),
+      };
+      continue;
+    }
+
     const result = applySingleEffect(next, effect, currentPlayerId, cardName);
     next = result.state;
     if (result.blocked) {

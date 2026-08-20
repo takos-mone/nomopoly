@@ -3,6 +3,12 @@ export type CardTarget = "currentPlayer" | "random" | "leftNeighbor" | "richest"
 export type CardEffect =
   | { kind: "drink"; amount: number; target: CardTarget }
   | { kind: "allDrink"; amount: number }
+  /**
+   * 特定のプレイヤー1人に飲ませる内部用の効果。
+   * カード定義には直接書かず、allDrink を1人分ずつに展開するときに使う
+   * (全員まとめて加算すると飲み確認ポップアップを通せないため)。
+   */
+  | { kind: "drinkPlayer"; amount: number; playerId: number; label: string }
   | { kind: "exemption"; amount: number; target: CardTarget }
   | { kind: "allExemption"; amount: number }
   | { kind: "duel"; amount: number; chooseOpponent?: boolean }

@@ -90,7 +90,8 @@ function drawRandomCard(pile: "chance" | "communityChest") {
   return deck[Math.floor(Math.random() * deck.length)];
 }
 
-function resolveLanding(state: GameState): GameState {
+/** @param depth カード移動による着地連鎖の深さ(無限ループ防止) */
+function resolveLanding(state: GameState, depth = 0): GameState {
   const player = currentPlayer(state);
   const square = state.squares[player.position];
   // 着地したマスの説明をまず出す。以降の効果通知はこの後ろに積まれる。
@@ -142,7 +143,7 @@ function resolveLanding(state: GameState): GameState {
       cardName: card.name,
       cardDescription: card.description,
     });
-    next = finalizeCardResolution(drawAndApplyCard(next, card, player.id));
+    next = finalizeCardResolution(drawAndApplyCard(next, card, player.id), depth);
   } else if (square.type === "jail") {
     log("タクシー待機所を見学中(効果なし)。");
   } else if (square.type === "freeParking") {
@@ -289,7 +290,14 @@ function calcRentFor(state: GameState, square: PropertySquare | ConvenienceSquar
  * 1. カード効果の残りキューがあれば続きを処理する
  * 2. それでも保留がなく、カードの移動効果で着地マスの解決が必要なら resolveLanding を連鎖させる
  */
-function finalizeCardResolution(state: GameState): GameState {
+/**
+ * 1回のディスパッチ内で「カード→移動→着地→またカード」が連鎖する深さの上限。
+ * 現在の盤面では移動先がカードマスになる組み合わせは1通りしかなく無限には続かないが、
+ * マスやカードを足したときに1手でゲームが固まるのを防ぐための保険。
+ */
+const MAX_LANDING_CHAIN_DEPTH = 8;
+
+function finalizeCardResolution(state: GameState, depth = 0): GameState {
   let next = state;
   if (next.pendingDrink || next.pendingTargetChoice) return next;
 
@@ -300,7 +308,14 @@ function finalizeCardResolution(state: GameState): GameState {
   }
 
   if (next.pendingLandingResolution) {
-    next = resolveLanding({ ...next, pendingLandingResolution: false });
+    if (depth >= MAX_LANDING_CHAIN_DEPTH) {
+      return {
+        ...next,
+        pendingLandingResolution: false,
+        log: pushLog(next.log, next.turn, currentPlayer(next).id, "移動の連鎖が長すぎるため、ここで打ち切った。"),
+      };
+    }
+    next = resolveLanding({ ...next, pendingLandingResolution: false }, depth + 1);
   }
 
   return next;
