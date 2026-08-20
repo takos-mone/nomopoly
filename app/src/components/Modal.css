@@ -23,7 +23,7 @@
 .modal-box {
   background: var(--panel);
   border-radius: 18px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--line);
   box-shadow: var(--shadow-strong);
   max-width: 480px;
   width: 100%;

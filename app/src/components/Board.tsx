@@ -97,9 +97,11 @@ export function Board({ state, onSelectSquare, visualPositions, overlay }: Board
         <p>ターン {state.turn}</p>
         <div className="board-center__piles">
           <div className="board-center__pile board-center__pile--chance">
+            <span className="board-center__pile-mark">?</span>
             <span>チャンス</span>
           </div>
           <div className="board-center__pile board-center__pile--community">
+            <span className="board-center__pile-mark">🎁</span>
             <span>共同基金</span>
           </div>
         </div>

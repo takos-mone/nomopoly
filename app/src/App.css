@@ -12,21 +12,34 @@
 .app-header {
   position: relative;
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 16px 100px 0;
-  flex-wrap: wrap;
+  gap: 4px;
+  padding: 18px 100px 4px;
 }
 
+/* タイトルをボードゲームの箱のロゴのように、赤バッジ+黒縁+金の帯で見せる */
 .app-header h1 {
+  position: relative;
   margin: 0;
-  font-size: clamp(28px, 6vw, 40px);
+  padding: 6px 22px;
+  font-size: clamp(26px, 5.6vw, 38px);
+  color: #fff8ee;
+  letter-spacing: 0.03em;
+  background: linear-gradient(180deg, var(--noren) 0%, var(--noren-dark) 100%);
+  border: 2.5px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 3px 0 var(--line), var(--shadow-soft);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
 .app-header__subtitle {
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .app-header__buttons {
@@ -79,14 +92,29 @@
   text-align: center;
   background: var(--panel);
   border-radius: 20px;
-  box-shadow: var(--shadow-strong);
-  border: 1px solid var(--border);
+  box-shadow: 0 0 0 3px var(--gold), var(--shadow-strong);
+  border: 2px solid var(--line);
+}
+
+.setup-screen > h1 {
+  padding: 6px 22px;
+  color: #fff8ee;
+  letter-spacing: 0.03em;
+  background: linear-gradient(180deg, var(--noren) 0%, var(--noren-dark) 100%);
+  border: 2.5px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 3px 0 var(--line);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+  align-self: center;
 }
 
 .setup-subtitle {
-  margin-top: -12px;
+  margin-top: -4px;
   color: var(--ink-soft);
-  font-size: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .setup-caution {
@@ -260,7 +288,7 @@
 .small-button {
   cursor: pointer;
   border-radius: 999px;
-  border: none;
+  border: 2px solid var(--line);
   padding: 10px 20px;
   font-size: 14px;
   font-family: var(--sans);
@@ -271,7 +299,7 @@
 .primary-button {
   background: linear-gradient(180deg, var(--noren) 0%, var(--noren-dark) 100%);
   color: #fff8ee;
-  box-shadow: 0 4px 0 var(--noren-dark), var(--shadow-soft);
+  box-shadow: 0 4px 0 var(--line), var(--shadow-soft);
 }
 
 .primary-button:not(:disabled):hover {
@@ -280,7 +308,7 @@
 
 .primary-button:not(:disabled):active {
   transform: translateY(2px);
-  box-shadow: 0 2px 0 var(--noren-dark);
+  box-shadow: 0 2px 0 var(--line);
 }
 
 .primary-button:disabled {
@@ -292,12 +320,23 @@
 .secondary-button {
   background: #fff;
   color: var(--ink-soft);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
+  box-shadow: 0 3px 0 var(--border);
+}
+
+.secondary-button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.secondary-button:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: none;
 }
 
 .secondary-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .small-button {
@@ -306,6 +345,7 @@
   font-size: 11px;
   padding: 4px 10px;
   margin-left: 6px;
+  border-width: 1.5px;
   box-shadow: none;
 }
 
@@ -316,7 +356,13 @@
   padding: 16px;
   text-align: left;
   box-shadow: var(--shadow-soft);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
+}
+
+.player-panel h3 {
+  display: inline-block;
+  padding-bottom: 2px;
+  border-bottom: 3px solid var(--gold);
 }
 
 .dice-tray {

@@ -1,18 +1,25 @@
 :root {
-  /* 飲もポリー: 明るい縁日・居酒屋テーマ */
-  --paper: #fbf1de;
+  /* 飲もポリー: 実物のモノポリー盤(クリーム地+黒い罫線+原色の色帯)を
+     居酒屋テーマに落とし込んだ配色。--line が盤面の黒罫線・カードの縁取りに使う
+     「印刷ボードゲームらしい」キーカラーで、--noren は本家の赤いロゴに寄せた
+     純度の高い緋色にしている(以前の朱色寄りの --noren よりビビッドにした)。 */
+  --paper: #f4ecd8;
   --paper-warm: #f7e6c8;
   --panel: #fffdf7;
-  --ink: #3b2a1e;
+  --ink: #241a10;
   --ink-soft: #7a6650;
   --border: #e8d6b0;
-  --noren: #d9483a;
-  --noren-dark: #b5382c;
+  --line: #201408;
+  --noren: #c8172a;
+  --noren-dark: #93101e;
   --gold: #e3a038;
   --gold-dark: #c07f1f;
+  --gold-line: #b8842a;
   --matcha: #5f9e6f;
   --matcha-dark: #46804f;
   --sky: #4a90c4;
+  --chest-blue: #2f6db0;
+  --chest-blue-dark: #204d80;
   --shadow-soft: 0 6px 16px rgba(89, 58, 30, 0.12);
   --shadow-strong: 0 12px 32px rgba(89, 58, 30, 0.22);
 
@@ -35,9 +42,18 @@
 
 body {
   margin: 0;
+  /* 木目テーブルの上にボードを広げたような雰囲気を、画像なしの
+     グラデーション+ごく薄いグレインだけで出す(実写に寄せすぎず軽量に保つ) */
   background:
-    radial-gradient(circle at 15% 8%, rgba(227, 160, 56, 0.16), transparent 45%),
-    radial-gradient(circle at 90% 85%, rgba(217, 72, 58, 0.12), transparent 50%),
+    radial-gradient(circle at 15% 8%, rgba(227, 160, 56, 0.18), transparent 45%),
+    radial-gradient(circle at 90% 85%, rgba(200, 23, 42, 0.1), transparent 50%),
+    repeating-linear-gradient(
+      115deg,
+      rgba(0, 0, 0, 0.015) 0px,
+      rgba(0, 0, 0, 0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
     var(--paper);
   min-height: 100svh;
   overflow-x: hidden;

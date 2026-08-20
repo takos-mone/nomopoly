@@ -3,13 +3,15 @@
   display: grid;
   grid-template-columns: repeat(11, minmax(0, 1fr));
   grid-template-rows: repeat(11, minmax(0, 1fr));
-  gap: 2px;
-  background: var(--noren-dark);
-  padding: 3px;
-  border-radius: 14px;
+  /* gapを黒地の上に開けることで、実物のボードにある細い黒罫線を再現する */
+  gap: 1.5px;
+  background: var(--line);
+  padding: 4px;
+  border-radius: 10px;
   width: 100%;
   max-width: 820px;
-  box-shadow: var(--shadow-strong);
+  /* 外周に金の縁取りを1本足して、化粧箱の蓋のような仕上げにする */
+  box-shadow: 0 0 0 3px var(--gold), var(--shadow-strong);
 }
 
 .board-overlay {
@@ -76,9 +78,13 @@
      確定幅を持つグリッドトラック上のセルに掛けて行高を導出させる。 */
   aspect-ratio: 1 / 1;
   background: #fffdf7;
+  /* gap側の黒罫線に加えて、セル自身にも極細のインセット罫を入れ、
+     印刷されたボードのようにマス同士がきっちり仕切られた見た目にする */
   border: none;
-  border-bottom: 3px solid transparent;
-  border-radius: 4px;
+  outline: 0.5px solid rgba(32, 20, 8, 0.16);
+  outline-offset: -0.5px;
+  border-bottom: 4px solid transparent;
+  border-radius: 2px;
   padding: 2px 3px;
   font-family: var(--sans);
   font-size: clamp(6px, 1.3vw, 10.5px);
@@ -102,7 +108,7 @@
 .board-square--jail,
 .board-square--freeParking,
 .board-square--goToJail {
-  background: #fdecc4;
+  background: #fbe8b8;
   font-weight: 700;
   align-items: center;
   justify-content: center;
@@ -110,11 +116,11 @@
 }
 
 .board-square--chance {
-  background: #ffe1e6;
+  background: #fde3b8;
 }
 
 .board-square--communityChest {
-  background: #dcf5e3;
+  background: #d3e6fb;
 }
 
 .board-square--tax {
@@ -123,7 +129,7 @@
 
 .board-square--convenience,
 .board-square--utility {
-  background: #dbeefe;
+  background: #e8eef2;
 }
 
 .board-square--mortgaged {
@@ -131,9 +137,11 @@
 }
 
 .board-square__stripe {
-  height: clamp(4px, 1vw, 8px);
+  height: clamp(5px, 1.3vw, 9px);
   margin: -2px -3px 2px -3px;
   flex-shrink: 0;
+  /* 色帯の下端に極細の黒線を引き、実物のボードにある色帯の縁取りを再現する */
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.28);
 }
 
 /* 所有者マーク。マスの左上に持ち主の絵文字を出す */
@@ -310,48 +318,76 @@
   gap: clamp(4px, 1.5vw, 12px);
   color: #fff8ee;
   text-align: center;
+  /* 化粧箱の中蓋を思わせる、斜めのリボンが走る深緋色のパネル */
   background:
-    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.08), transparent 55%),
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1), transparent 55%),
+    repeating-linear-gradient(
+      -32deg,
+      rgba(255, 255, 255, 0.05) 0px,
+      rgba(255, 255, 255, 0.05) 2px,
+      transparent 2px,
+      transparent 26px
+    ),
     linear-gradient(150deg, var(--noren) 0%, var(--noren-dark) 100%);
-  border-radius: 10px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
 }
 
 .board-center h2 {
   color: #fff8ee;
-  font-size: clamp(14px, 3vw, 26px);
+  font-size: clamp(15px, 3.2vw, 27px);
   margin: 0;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
 .board-center p {
   font-size: clamp(9px, 1.6vw, 13px);
-  opacity: 0.85;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
 }
 
 .board-center__piles {
   display: flex;
-  gap: clamp(8px, 2vw, 20px);
+  gap: clamp(10px, 2.4vw, 22px);
 }
 
+/* チャンス・共同基金は「積み重なった伏せカード」に見えるよう、
+   実カードの下にもう1枚控えているような二重の疑似シャドウを付けている */
 .board-center__pile {
   width: clamp(48px, 12vw, 96px);
   aspect-ratio: 3 / 4.2;
-  border-radius: 8px;
-  border: 2px solid #fff8ee;
+  border-radius: 7px;
+  border: 2px solid var(--line);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   font-size: clamp(8px, 1.6vw, 12px);
   font-weight: 700;
   color: #fff8ee;
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15), 4px 4px 0 rgba(0, 0, 0, 0.1);
+  box-shadow:
+    3px 3px 0 var(--line),
+    5px 5px 0 rgba(0, 0, 0, 0.25);
+}
+
+.board-center__pile-mark {
+  font-size: clamp(20px, 5vw, 36px);
+  font-family: var(--heading);
+  line-height: 1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
 }
 
 .board-center__pile--chance {
-  background: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(160deg, #f0a939 0%, #d4841c 100%);
 }
 
 .board-center__pile--community {
-  background: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(160deg, var(--chest-blue) 0%, var(--chest-blue-dark) 100%);
 }
 
 @media (max-width: 480px) {

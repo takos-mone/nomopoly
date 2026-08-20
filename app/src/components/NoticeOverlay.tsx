@@ -1,9 +1,11 @@
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 import { useEffect, useState } from "react";
 import { Illustration, type Pose } from "./Illustration";
+import { OwnableSquareFacts } from "./PropertySummary";
 import { describeSquare } from "../logic/squareInfo";
 import { playCardReveal, playCardSuspense } from "../logic/sound";
 import type { GameState, Notice } from "../types";
+import { isOwnable } from "../types";
 import "./NoticeOverlay.css";
 
 /** カードをめくるまでの焦らし時間 */
@@ -93,6 +95,11 @@ function noticePlayerId(notice: Notice): number | null {
 
 export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) {
   const body = buildBody(notice, state);
+  // 着地マスが所有可能(土地・コンビニ・交通)なら、一言の説明ではなく
+  // 所有者・購入価格・改装費・訪問時に飲む量までまとめて出す。
+  // 「買うべきか」の判断材料は着地した瞬間に見えているのが望ましいため。
+  const landingSquare = notice.kind === "landing" ? state.squares[notice.squareId] : null;
+  const propertyFactsSquare = landingSquare && isOwnable(landingSquare) ? landingSquare : null;
   const playerId = noticePlayerId(notice);
   const player = playerId !== null ? state.players.find((p) => p.id === playerId) : undefined;
   const isCard = notice.kind === "card";
@@ -184,7 +191,13 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
         <Illustration pose={poseFor(notice)} size={104} className="illustration--notice" />
         <div className="notice-card__icon">{body.icon}</div>
         <h3 className="notice-card__title">{body.title}</h3>
-        {body.detail && <p className="notice-card__detail">{body.detail}</p>}
+        {propertyFactsSquare ? (
+          <div className="notice-card__property">
+            <OwnableSquareFacts square={propertyFactsSquare} state={state} />
+          </div>
+        ) : (
+          body.detail && <p className="notice-card__detail">{body.detail}</p>
+        )}
         {player && (
           <div className="notice-card__player">
             <span
