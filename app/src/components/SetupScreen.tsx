@@ -12,15 +12,25 @@ interface SetupScreenProps {
 export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   const [count, setCount] = useState(4);
   const [names, setNames] = useState<string[]>(["", "", "", "", "", ""]);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
-  const [eliminationThreshold, setEliminationThreshold] = useState(DEFAULT_ELIMINATION_THRESHOLD);
+  // 文字列で保持する。数値で持つと入力途中("5"→"50")が即座に丸められて打ちにくいうえ、
+  // 空欄(=デフォルトのまま)を表現できないため。
+  const [thresholdInput, setThresholdInput] = useState("");
   // マウント時に一度だけ読み込む。破棄したら再表示しないので state で保持する。
   const [savedGame, setSavedGame] = useState(loadGame);
 
   const updateName = (index: number, value: string) => {
     setNames((prev) => prev.map((n, i) => (i === index ? value : n)));
   };
+
+  /** 空欄・不正値ならデフォルトを使う */
+  const resolvedThreshold = (() => {
+    const parsed = Number(thresholdInput);
+    if (!thresholdInput.trim() || !Number.isFinite(parsed) || parsed < 1) {
+      return DEFAULT_ELIMINATION_THRESHOLD;
+    }
+    return Math.floor(parsed);
+  })();
 
   return (
     <div className="setup-screen">
@@ -73,25 +83,28 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
         ))}
       </div>
 
-      <button type="button" className="setup-advanced-toggle" onClick={() => setShowAdvanced((v) => !v)}>
-        {showAdvanced ? "▲ 詳細設定を閉じる" : "▼ 詳細設定(カスタムルール)"}
-      </button>
-      {showAdvanced && (
-        <div className="setup-advanced">
-          <label>
-            脱落ライン(累計飲酒量がこのunitに達すると脱落):
-            <input
-              type="number"
-              min={10}
-              step={5}
-              value={eliminationThreshold}
-              onChange={(e) => setEliminationThreshold(Math.max(10, Number(e.target.value) || DEFAULT_ELIMINATION_THRESHOLD))}
-            />
-          </label>
+      <div className="setup-threshold">
+        <label htmlFor="elimination-threshold">脱落ライン(累計飲酒量)</label>
+        <div className="setup-threshold__row">
+          <input
+            id="elimination-threshold"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={5}
+            placeholder={String(DEFAULT_ELIMINATION_THRESHOLD)}
+            value={thresholdInput}
+            onChange={(e) => setThresholdInput(e.target.value)}
+          />
+          <span className="setup-threshold__unit">unit で脱落</span>
         </div>
-      )}
+        <p className="setup-threshold__hint">
+          未入力ならデフォルトの {DEFAULT_ELIMINATION_THRESHOLD} unit。今回は
+          <strong> {resolvedThreshold} unit</strong> で始まります。
+        </p>
+      </div>
 
-      <button className="primary-button" onClick={() => onStart(names.slice(0, count), eliminationThreshold)}>
+      <button className="primary-button" onClick={() => onStart(names.slice(0, count), resolvedThreshold)}>
         ゲーム開始
       </button>
       <button type="button" className="setup-advanced-toggle" onClick={() => setShowHowTo(true)}>

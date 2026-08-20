@@ -140,7 +140,7 @@ function resolveLanding(state: GameState): GameState {
   } else if (square.type === "jail") {
     log("タクシー待機所を見学中(効果なし)。");
   } else if (square.type === "freeParking") {
-    log("小休憩スポットで一休み(効果なし)。");
+    log("喫煙所で一服(効果なし)。");
   } else if (square.type === "goToJail") {
     log("終電を逃してタクシー待機所へ強制移動。次のターンは休み。");
     // ここでは動かさない。通知を消した瞬間に一気にワープさせることで、
@@ -154,7 +154,7 @@ function resolveLanding(state: GameState): GameState {
       detail: `${player.name}はタクシー待機所へ強制移動。次のターンは休みになる。`,
     });
   } else if (square.type === "go") {
-    log("GOに到着!");
+    log("GO(自宅)に到着!");
   }
 
   return next;

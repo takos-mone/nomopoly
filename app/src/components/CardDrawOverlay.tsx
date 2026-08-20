@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { playCardDraw } from "../logic/sound";
 import type { CardDrawEvent } from "../types";
 import "./CardDrawOverlay.css";
@@ -14,9 +14,15 @@ const PILE_LABEL: Record<CardDrawEvent["pile"], string> = {
 
 export function CardDrawOverlay({ cardDraw }: CardDrawOverlayProps) {
   const [visibleSeq, setVisibleSeq] = useState<number | null>(null);
+  // 「どのカードドローまで演出を再生したか」を覚えておく。
+  // cardDraw は駒の移動中だけ null に切り替わる(App側で isAnimating を見て渡している)ため、
+  // seq を見ずに再生すると、移動が終わるたびに同じカードの音と演出が鳴り直してしまう。
+  const playedSeq = useRef<number | null>(null);
 
   useEffect(() => {
     if (!cardDraw) return;
+    if (playedSeq.current === cardDraw.seq) return;
+    playedSeq.current = cardDraw.seq;
     setVisibleSeq(cardDraw.seq);
     playCardDraw();
     const timer = setTimeout(() => setVisibleSeq(null), 1800);

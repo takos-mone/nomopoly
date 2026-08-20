@@ -66,7 +66,7 @@ export function describeSquare(state: GameState, square: Square, playerId: numbe
 
   switch (square.type) {
     case "go":
-      return { kind, body: "GO。盤面を1周するたびに免除権+2 unitがもらえる。" };
+      return { kind, body: "GO(自宅)。盤面を1周するたびに免除権+2 unitがもらえる。" };
     case "tax":
       return { kind, body: `${square.amount} unit飲む。誰の収入にもならない。` };
     case "chance":
@@ -76,7 +76,7 @@ export function describeSquare(state: GameState, square: Square, playerId: numbe
     case "jail":
       return { kind, body: "タクシー待機所。ここに止まっただけなら何も起きない(見学中)。" };
     case "freeParking":
-      return { kind, body: "小休憩スポット。何も起きない。ひと息つこう。" };
+      return { kind, body: "喫煙所。何も起きない。ひと息つこう。" };
     case "goToJail":
       return { kind, body: "終電を逃した!タクシー待機所へ強制移動し、次のターンは休みになる。" };
     default:
