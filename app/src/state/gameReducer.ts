@@ -18,8 +18,8 @@ import {
   calcPropertyRent,
   calcUtilityRent,
 } from "../logic/rent";
-import type { EndCondition, GameState, Player, PropertySquare, ConvenienceSquare } from "../types";
-import { isOwnable } from "../types";
+import type { EndCondition, GameState, Player, PropertySquare, ConvenienceSquare, TradeOffer } from "../types";
+import { isEmptyTradeOffer, isOwnable } from "../types";
 
 export type GameAction =
   | { type: "START_GAME"; names: string[]; eliminationThreshold?: number; endCondition?: EndCondition }
@@ -50,6 +50,10 @@ export type GameAction =
   | { type: "SERVE_JAIL_TURN" }
   /** タクシーチケットを1枚使って休みを打ち切る(飲まなくてよい) */
   | { type: "USE_TAXI_TICKET" }
+  /** 自分のターン中、任意のタイミングで他プレイヤー1人に交渉を持ちかける */
+  | { type: "PROPOSE_TRADE"; targetPlayerId: number; give: TradeOffer; want: TradeOffer }
+  | { type: "ACCEPT_TRADE" }
+  | { type: "REJECT_TRADE" }
   | { type: "RESET_GAME" };
 
 /** 終電を逃したときの休みターン数 */
@@ -74,6 +78,7 @@ export function createInitialState(): GameState {
     pendingPurchase: null,
     pendingDrink: null,
     pendingChoice: null,
+    pendingTrade: null,
     pendingCardQueue: [],
     pendingCardName: null,
     pendingLandingResolution: false,
@@ -83,6 +88,28 @@ export function createInitialState(): GameState {
     endCondition: "lastSurvivor",
     phase: "setup",
   };
+}
+
+/** そのプレイヤーが実際に offer の中身を渡せる状態か(所有物件・残高が足りているか)を確認する */
+function canAffordTradeOffer(state: GameState, playerId: number, offer: TradeOffer): boolean {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return false;
+  if (player.exemptionUnits < offer.exemptionUnits) return false;
+  if (player.taxiTickets < offer.taxiTickets) return false;
+  return offer.propertyIds.every(
+    (squareId) => state.ownership[squareId] === playerId && !state.mortgages[squareId],
+  );
+}
+
+/** 交渉ログ・確認画面用に、渡す/求める中身を短い日本語にまとめる */
+function describeTradeOffer(state: GameState, offer: TradeOffer): string {
+  const parts: string[] = [];
+  if (offer.propertyIds.length > 0) {
+    parts.push(offer.propertyIds.map((id) => state.squares[id].name).join("・"));
+  }
+  if (offer.exemptionUnits > 0) parts.push(`免除権${offer.exemptionUnits}`);
+  if (offer.taxiTickets > 0) parts.push(`タクシーチケット${offer.taxiTickets}枚`);
+  return parts.length > 0 ? parts.join("+") : "なし";
 }
 
 function ownsFullGroup(state: GameState, playerId: number, colorGroup: string): boolean {
@@ -449,7 +476,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "ROLL_DICE": {
-      if (state.pendingPurchase || state.pendingDrink || state.pendingChoice) return state;
+      if (state.pendingPurchase || state.pendingDrink || state.pendingChoice || state.pendingTrade) return state;
       if (state.notices.length > 0) return state;
       const [d1, d2] = action.dice ?? [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
       const player = currentPlayer(state);
@@ -467,7 +494,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "SERVE_JAIL_TURN": {
-      if (state.pendingDrink || state.pendingChoice || state.notices.length > 0) return state;
+      if (state.pendingDrink || state.pendingChoice || state.pendingTrade || state.notices.length > 0) return state;
       const player = currentPlayer(state);
       if (player.skipTurns <= 0) return state;
       const remaining = player.skipTurns - 1;
@@ -485,7 +512,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "USE_TAXI_TICKET": {
-      if (state.pendingDrink || state.pendingChoice || state.notices.length > 0) return state;
+      if (state.pendingDrink || state.pendingChoice || state.pendingTrade || state.notices.length > 0) return state;
       const player = currentPlayer(state);
       if (player.skipTurns <= 0 || player.taxiTickets <= 0) return state;
       return {
@@ -503,7 +530,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "PAY_TO_LEAVE_JAIL": {
-      if (state.pendingDrink || state.pendingChoice || state.notices.length > 0) return state;
+      if (state.pendingDrink || state.pendingChoice || state.pendingTrade || state.notices.length > 0) return state;
       const player = currentPlayer(state);
       if (player.skipTurns <= 0) return state;
       const cleared: GameState = {
@@ -562,7 +589,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "BUILD_SHOP": {
-      if (state.pendingDrink || state.pendingChoice) return state;
+      if (state.pendingDrink || state.pendingChoice || state.pendingTrade) return state;
       const player = currentPlayer(state);
       const square = state.squares[action.squareId];
       if (square.type !== "property") return state;
@@ -582,7 +609,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "END_TURN": {
-      if (state.pendingPurchase || state.pendingDrink || state.pendingChoice) return state;
+      if (state.pendingPurchase || state.pendingDrink || state.pendingChoice || state.pendingTrade) return state;
       if (state.notices.length > 0) return state;
       const alive = state.players.filter((p) => !p.eliminated);
       if (alive.length <= 1) {
@@ -746,7 +773,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "REPAY_MORTGAGE": {
-      if (state.pendingDrink || state.pendingChoice) return state;
+      if (state.pendingDrink || state.pendingChoice || state.pendingTrade) return state;
       const mortgage = state.mortgages[action.squareId];
       if (!mortgage) return state;
       const ownerId = state.ownership[action.squareId];
@@ -801,6 +828,103 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       const cleared: GameState = { ...state, pendingChoice: null };
       const next = applyFreeUpgrade(cleared, choice.currentPlayerId, action.squareId, choice.cardName);
       return finalizeCardResolution(next);
+    }
+
+    case "PROPOSE_TRADE": {
+      // 自分のターン中、他の保留状態が何もないときだけ提案できる
+      if (state.pendingPurchase || state.pendingDrink || state.pendingChoice || state.pendingTrade) return state;
+      if (state.notices.length > 0) return state;
+      const proposer = currentPlayer(state);
+      const target = state.players.find((p) => p.id === action.targetPlayerId);
+      if (!target || target.eliminated || target.id === proposer.id) return state;
+      if (isEmptyTradeOffer(action.give) && isEmptyTradeOffer(action.want)) return state;
+      if (!canAffordTradeOffer(state, proposer.id, action.give)) return state;
+      if (!canAffordTradeOffer(state, target.id, action.want)) return state;
+
+      return {
+        ...state,
+        pendingTrade: {
+          fromPlayerId: proposer.id,
+          toPlayerId: target.id,
+          give: action.give,
+          want: action.want,
+        },
+        log: pushLog(
+          state.log,
+          state.turn,
+          proposer.id,
+          `${proposer.name}は${target.name}に交渉を持ちかけた。`,
+        ),
+      };
+    }
+
+    case "ACCEPT_TRADE": {
+      const trade = state.pendingTrade;
+      if (!trade) return state;
+      const from = state.players.find((p) => p.id === trade.fromPlayerId);
+      const to = state.players.find((p) => p.id === trade.toPlayerId);
+      if (!from || !to) return { ...state, pendingTrade: null };
+      // 提案から承認までの間に他の操作は挟めない設計だが、念のため成立条件を再確認する。
+      // 何らかの理由で条件が崩れていた場合は、静かに不成立として片付ける。
+      if (!canAffordTradeOffer(state, from.id, trade.give) || !canAffordTradeOffer(state, to.id, trade.want)) {
+        return {
+          ...state,
+          pendingTrade: null,
+          log: pushLog(state.log, state.turn, from.id, "交渉の条件が成立しなくなったため取り消された。"),
+        };
+      }
+
+      const ownership = { ...state.ownership };
+      for (const squareId of trade.give.propertyIds) ownership[squareId] = to.id;
+      for (const squareId of trade.want.propertyIds) ownership[squareId] = from.id;
+
+      const players = state.players.map((p) => {
+        if (p.id === from.id) {
+          return {
+            ...p,
+            exemptionUnits: p.exemptionUnits - trade.give.exemptionUnits + trade.want.exemptionUnits,
+            taxiTickets: p.taxiTickets - trade.give.taxiTickets + trade.want.taxiTickets,
+          };
+        }
+        if (p.id === to.id) {
+          return {
+            ...p,
+            exemptionUnits: p.exemptionUnits - trade.want.exemptionUnits + trade.give.exemptionUnits,
+            taxiTickets: p.taxiTickets - trade.want.taxiTickets + trade.give.taxiTickets,
+          };
+        }
+        return p;
+      });
+
+      return {
+        ...state,
+        ownership,
+        players,
+        pendingTrade: null,
+        log: pushLog(
+          state.log,
+          state.turn,
+          from.id,
+          `${from.name}と${to.name}の交渉が成立した(${describeTradeOffer(state, trade.give)} ⇄ ${describeTradeOffer(state, trade.want)})。`,
+        ),
+      };
+    }
+
+    case "REJECT_TRADE": {
+      const trade = state.pendingTrade;
+      if (!trade) return state;
+      const from = state.players.find((p) => p.id === trade.fromPlayerId);
+      const to = state.players.find((p) => p.id === trade.toPlayerId);
+      return {
+        ...state,
+        pendingTrade: null,
+        log: pushLog(
+          state.log,
+          state.turn,
+          trade.toPlayerId,
+          `${to?.name ?? ""}は${from?.name ?? ""}の交渉を断った。`,
+        ),
+      };
     }
 
     default:

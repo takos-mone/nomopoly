@@ -5,19 +5,14 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6e7cf",
-  "theme_color": "#c0392b",
+  "background_color": "#f4ecd8",
+  "theme_color": "#c8172a",
   "icons": [
     {
       "src": "./icons/app-icon.png",
-      "sizes": "512x512",
+      "sizes": "1254x1254",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "./favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
     }
   ]
 }

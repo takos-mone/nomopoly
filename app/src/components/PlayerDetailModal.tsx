@@ -15,7 +15,7 @@ interface PlayerDetailModalProps {
 export function PlayerDetailModal({ player, state, dispatch, onClose, onSelectSquare }: PlayerDetailModalProps) {
   const owned = state.squares.filter((sq) => state.ownership[sq.id] === player.id);
   const isCurrent = state.players[state.currentPlayerIndex]?.id === player.id;
-  const blocked = !!state.pendingPurchase || !!state.pendingDrink || !!state.pendingChoice;
+  const blocked = !!state.pendingPurchase || !!state.pendingDrink || !!state.pendingChoice || !!state.pendingTrade;
 
   return (
     <Modal title={`${player.name}の所有物件`} onClose={onClose}>

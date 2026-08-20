@@ -14,18 +14,25 @@
   box-shadow: 0 0 0 3px var(--gold), var(--shadow-strong);
 }
 
+/*
+ * .board-center と同じグリッド範囲(2/11)に配置することで、盤面の内側9x9マスの
+ * 幅を超えて外周の小さいマスへはみ出さないようにしている。
+ * 以前は .board-grid 全体(外周含む11列)に対する%指定だったため、
+ * スマホ幅では外周マスに一部かぶってしまっていた。
+ */
 .board-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  grid-row: 2 / 11;
+  grid-column: 2 / 11;
+  align-self: center;
+  justify-self: center;
   z-index: 40;
   background: var(--panel);
   border-radius: 16px;
   padding: 14px 18px;
   box-shadow: var(--shadow-strong);
-  border: 1px solid var(--border);
+  border: 2px solid var(--line);
   width: min(92%, 320px);
+  max-width: 100%;
   text-align: center;
   animation: board-overlay-fade-in 0.15s ease;
 }
@@ -38,11 +45,11 @@
 @keyframes board-overlay-turn-in {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) translateX(-44px) scale(0.94);
+    transform: translateX(-44px) scale(0.94);
   }
   100% {
     opacity: 1;
-    transform: translate(-50%, -50%) translateX(0) scale(1);
+    transform: translateX(0) scale(1);
   }
 }
 

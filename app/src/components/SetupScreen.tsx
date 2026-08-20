@@ -3,7 +3,6 @@ import { DEFAULT_ELIMINATION_THRESHOLD } from "../logic/elimination";
 import { clearSavedGame, formatSavedAt, loadGame } from "../logic/persistence";
 import type { EndCondition, GameState } from "../types";
 import { HowToPlayModal } from "./HowToPlayModal";
-import { Illustration } from "./Illustration";
 
 interface SetupScreenProps {
   onStart: (names: string[], eliminationThreshold: number, endCondition: EndCondition) => void;
@@ -49,8 +48,16 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
 
   return (
     <div className="setup-screen">
-      <Illustration pose="toast" size={132} className="illustration--hero" />
-      <h1>飲もポリー</h1>
+      {/* 入口ページの顔として、ロゴ文字入りのバナーをそのまま見出しに使う。
+          画像に「NOMOPOLY」の文字が入っているので、h1はスクリーンリーダー向けに残しつつ視覚的には隠す。 */}
+      <img
+        className="setup-banner"
+        src={`${import.meta.env.BASE_URL}icons/banner.png`}
+        alt="飲もポリー"
+        width={1672}
+        height={941}
+      />
+      <h1 className="setup-screen__sr-title">飲もポリー</h1>
       <p className="setup-subtitle">モノポリー × 飲みゲー</p>
       <p className="setup-caution">
         ※ 1 unit の実量は今日の飲み会で自由に決めてください。無理なく、ノンアルコールでも楽しめます。

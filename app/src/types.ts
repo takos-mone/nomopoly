@@ -143,6 +143,29 @@ export type PendingChoice =
       prompt: string;
     };
 
+/** 交渉で受け渡しできる資産・権利の組み合わせ */
+export interface TradeOffer {
+  /** 譲渡する物件のマスID一覧(抵当中の物件は対象外) */
+  propertyIds: number[];
+  exemptionUnits: number;
+  taxiTickets: number;
+}
+
+export function isEmptyTradeOffer(offer: TradeOffer): boolean {
+  return offer.propertyIds.length === 0 && offer.exemptionUnits === 0 && offer.taxiTickets === 0;
+}
+
+/**
+ * 提案中の交渉。承認されるまでゲームは進まない。
+ * fromPlayer が give を渡す代わりに want を受け取りたい、という提案。
+ */
+export interface PendingTrade {
+  fromPlayerId: number;
+  toPlayerId: number;
+  give: TradeOffer;
+  want: TradeOffer;
+}
+
 export interface LogEntry {
   id: number;
   turn: number;
@@ -193,6 +216,8 @@ export interface GameState {
   pendingPurchase: { squareId: number; price: number } | null;
   pendingDrink: PendingDrink | null;
   pendingChoice: PendingChoice | null;
+  /** 提案中の交渉。相手が承認/拒否するまで他の操作をブロックする */
+  pendingTrade: PendingTrade | null;
   /** 現在処理中のカードの、まだ適用していない残り効果(1枚のカードが複数人に飲ませる場合の待ち行列) */
   pendingCardQueue: CardEffect[];
   pendingCardName: string | null;

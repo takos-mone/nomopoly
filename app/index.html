@@ -2,18 +2,19 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <!--
-      アイコンは PNG を優先し、まだ置かれていない場合は既存の SVG にフォールバックする。
-      ブラウザは後に書いた対応形式を優先するため、PNG を後ろに置いている。
-    -->
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="icon" type="image/png" sizes="512x512" href="./icons/app-icon.png" />
+    <!-- ロゴ画像が実ファイルとして揃ったので、faviconはPNGのみを使う -->
+    <link rel="icon" type="image/png" sizes="any" href="./icons/app-icon.png" />
     <link rel="apple-touch-icon" href="./icons/app-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#c0392b" />
+    <meta name="theme-color" content="#c8172a" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>飲もポリー</title>
     <meta name="description" content="モノポリー×飲みゲー ボードゲームアプリ「飲もポリー」" />
+    <meta property="og:title" content="飲もポリー" />
+    <meta property="og:description" content="モノポリー×飲みゲー ボードゲームアプリ「飲もポリー」" />
+    <meta property="og:image" content="./icons/banner.png" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

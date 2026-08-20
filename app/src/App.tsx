@@ -11,6 +11,7 @@ import { PlayerPanel } from "./components/PlayerPanel";
 import { PropertyDetailModal } from "./components/PropertyDetailModal";
 import { SetupScreen } from "./components/SetupScreen";
 import { TargetChoiceModal } from "./components/TargetChoiceModal";
+import { TradeComposerModal, TradeResponseModal } from "./components/TradeModal";
 import { useTokenAnimation } from "./hooks/useTokenAnimation";
 import { clearSavedGame, saveGame } from "./logic/persistence";
 import { isMuted, playClick, playElimination, playTurnStart, setMuted } from "./logic/sound";
@@ -24,6 +25,7 @@ function App() {
   const [muted, setMutedState] = useState(isMuted);
   const [showHowTo, setShowHowTo] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  const [showTradeComposer, setShowTradeComposer] = useState(false);
   // 強制移動で「歩かせず」ワープさせたいプレイヤー。通知を閉じた瞬間にセットする。
   const [snapPlayerIds, setSnapPlayerIds] = useState<number[]>([]);
   const visualPositions = useTokenAnimation(state.players, state.squares.length, snapPlayerIds);
@@ -109,6 +111,17 @@ function App() {
   // 通知を消化しきるまで、飲み代確認やサイコロなどの操作は出さない(表示順の破綻を防ぐ)
   const noticesBlocking = state.notices.length > 0;
 
+  // 交渉ボタンを出せる条件。自分のターン中、他の保留状態(飲み確認・選択・購入確認・
+  // 交渉中そのもの)が何もないとき、かつ交渉相手になれる生存者がいるとき。
+  const canOpenTrade =
+    !isAnimating &&
+    !noticesBlocking &&
+    !state.pendingDrink &&
+    !state.pendingChoice &&
+    !state.pendingPurchase &&
+    !state.pendingTrade &&
+    state.players.some((p) => p.id !== state.players[state.currentPlayerIndex].id && !p.eliminated);
+
   const dismissNotice = () => {
     const head = state.notices[0];
     // 強制移動はワープさせる。ホップさせると「歩いて向かった」ように見えるため。
@@ -151,13 +164,16 @@ function App() {
 
       {showHowTo && <HowToPlayModal onClose={() => setShowHowTo(false)} />}
       {showLog && <EventLogModal state={state} onClose={() => setShowLog(false)} />}
+      {showTradeComposer && (
+        <TradeComposerModal state={state} dispatch={dispatch} onClose={() => setShowTradeComposer(false)} />
+      )}
       <div className="app-layout">
         <div className="app-layout__board">
           <Board
             state={state}
             onSelectSquare={setSelectedSquareId}
             visualPositions={visualPositions}            overlay={
-              !isAnimating && !noticesBlocking && !state.pendingDrink && !state.pendingChoice ? (
+              !isAnimating && !noticesBlocking && !state.pendingDrink && !state.pendingChoice && !state.pendingTrade ? (
                 <DiceControls state={state} dispatch={dispatch} turnPhase={turnPhase} />
               ) : undefined
             }
@@ -167,6 +183,14 @@ function App() {
           <PlayerPanel state={state} onSelectPlayer={setSelectedPlayerId} />
           <button type="button" className="secondary-button app-layout__log-button" onClick={() => setShowLog(true)}>
             📜 ログを見る
+          </button>
+          <button
+            type="button"
+            className="secondary-button app-layout__log-button"
+            disabled={!canOpenTrade}
+            onClick={() => setShowTradeComposer(true)}
+          >
+            🤝 交渉する
           </button>
         </div>
       </div>
@@ -199,6 +223,9 @@ function App() {
       )}
       {!isAnimating && !noticesBlocking && state.pendingDrink && (
         <DrinkResolutionModal state={state} dispatch={dispatch} />
+      )}
+      {!isAnimating && !noticesBlocking && state.pendingTrade && (
+        <TradeResponseModal state={state} dispatch={dispatch} />
       )}
       {state.phase === "finished" && <GameOverModal state={state} dispatch={dispatch} />}
     </>

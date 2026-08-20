@@ -14,8 +14,9 @@ const SAVE_STORAGE_KEY = "nomopoly-savegame";
  * v3: Player.skipNextTurn(boolean) を skipTurns(number) に変更、taxiTickets と pendingMoveSteps を追加。
  * v4: Player.eliminatedOrder と GameState.endCondition を追加。
  * v5: pendingTargetChoice を pendingChoice に一般化、Player.previousPosition を追加。
+ * v6: GameState.pendingTrade(交渉)を追加。
  */
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 
 interface SavePayload {
   version: number;
