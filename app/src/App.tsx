@@ -4,6 +4,7 @@ import { DiceControls } from "./components/DiceControls";
 import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
 import { EventLog } from "./components/EventLog";
 import { GameOverModal } from "./components/GameOverModal";
+import { HowToPlayModal } from "./components/HowToPlayModal";
 import { PlayerDetailModal } from "./components/PlayerDetailModal";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { PropertyDetailModal } from "./components/PropertyDetailModal";
@@ -19,6 +20,7 @@ function App() {
   const [selectedSquareId, setSelectedSquareId] = useState<number | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [muted, setMutedState] = useState(isMuted);
+  const [showHowTo, setShowHowTo] = useState(false);
   const visualPositions = useTokenAnimation(state.players, state.squares.length);
   const prevEliminatedCount = useRef(0);
 
@@ -51,20 +53,33 @@ function App() {
       <header className="app-header">
         <h1>飲もポリー</h1>
         <span className="app-header__subtitle">モノポリー × 飲みゲー</span>
-        <button
-          type="button"
-          className="app-header__mute"
-          onClick={() => {
-            const next = !muted;
-            setMuted(next);
-            setMutedState(next);
-          }}
-          aria-label={muted ? "効果音をオンにする" : "効果音をオフにする"}
-          title={muted ? "効果音をオンにする" : "効果音をオフにする"}
-        >
-          {muted ? "🔇" : "🔊"}
-        </button>
+        <div className="app-header__buttons">
+          <button
+            type="button"
+            className="app-header__icon-button"
+            onClick={() => setShowHowTo(true)}
+            aria-label="遊び方を見る"
+            title="遊び方を見る"
+          >
+            📖
+          </button>
+          <button
+            type="button"
+            className="app-header__icon-button"
+            onClick={() => {
+              const next = !muted;
+              setMuted(next);
+              setMutedState(next);
+            }}
+            aria-label={muted ? "効果音をオンにする" : "効果音をオフにする"}
+            title={muted ? "効果音をオンにする" : "効果音をオフにする"}
+          >
+            {muted ? "🔇" : "🔊"}
+          </button>
+        </div>
       </header>
+
+      {showHowTo && <HowToPlayModal onClose={() => setShowHowTo(false)} />}
       <div className="app-layout">
         <div className="app-layout__board">
           <Board

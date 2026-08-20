@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DEFAULT_ELIMINATION_THRESHOLD } from "../logic/elimination";
+import { HowToPlayModal } from "./HowToPlayModal";
 
 interface SetupScreenProps {
   onStart: (names: string[], eliminationThreshold: number) => void;
@@ -9,6 +10,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const [count, setCount] = useState(4);
   const [names, setNames] = useState<string[]>(["", "", "", "", "", ""]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showHowTo, setShowHowTo] = useState(false);
   const [eliminationThreshold, setEliminationThreshold] = useState(DEFAULT_ELIMINATION_THRESHOLD);
 
   const updateName = (index: number, value: string) => {
@@ -64,6 +66,11 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       <button className="primary-button" onClick={() => onStart(names.slice(0, count), eliminationThreshold)}>
         ゲーム開始
       </button>
+      <button type="button" className="setup-advanced-toggle" onClick={() => setShowHowTo(true)}>
+        📖 遊び方を見る
+      </button>
+
+      {showHowTo && <HowToPlayModal onClose={() => setShowHowTo(false)} />}
     </div>
   );
 }

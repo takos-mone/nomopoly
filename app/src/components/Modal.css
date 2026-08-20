@@ -363,3 +363,40 @@
   font-size: 16px;
   flex-shrink: 0;
 }
+
+.howto-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.howto-modal section h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: var(--noren-dark);
+}
+
+.howto-modal section p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.howto-modal ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.howto-modal__footnote {
+  font-size: 12px;
+  color: var(--ink-soft);
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+}
