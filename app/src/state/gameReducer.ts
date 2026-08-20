@@ -1,6 +1,12 @@
-import { CHANCE_CARDS, COMMUNITY_CHEST_CARDS } from "../data/cards";
+import { CHANCE_CARDS, COMMUNITY_CHEST_CARDS, cardWeight } from "../data/cards";
 import { BOARD, GO_SQUARE_ID, JAIL_SQUARE_ID } from "../data/board";
-import { drawAndApplyCard, processCardEffectQueue, resolveChosenTarget } from "../logic/cardEffects";
+import {
+  applyFreeUpgrade,
+  drawAndApplyCard,
+  processCardEffectQueue,
+  resolveChosenTarget,
+  resolveDuelOutcome,
+} from "../logic/cardEffects";
 import { createPendingDrink, pushGain, pushLog, pushNotice } from "../logic/drinkEngine";
 import { DEFAULT_ELIMINATION_THRESHOLD, applyElimination } from "../logic/elimination";
 import {
@@ -31,6 +37,10 @@ export type GameAction =
   | { type: "RESOLVE_DEFERRED"; playerId: number; index: number }
   | { type: "REPAY_MORTGAGE"; squareId: number }
   | { type: "CHOOSE_TARGET"; playerId: number }
+  /** ジャンケンの結果、勝った方を選ぶ */
+  | { type: "CHOOSE_DUEL_WINNER"; winnerId: number }
+  /** 無料改装する物件を選ぶ */
+  | { type: "CHOOSE_PROPERTY"; squareId: number }
   | { type: "USE_EXEMPTION" }
   | { type: "RESUME_GAME"; state: GameState }
   | { type: "DISMISS_NOTICE" }
@@ -63,7 +73,7 @@ export function createInitialState(): GameState {
     lastDice: null,
     pendingPurchase: null,
     pendingDrink: null,
-    pendingTargetChoice: null,
+    pendingChoice: null,
     pendingCardQueue: [],
     pendingCardName: null,
     pendingLandingResolution: false,
@@ -86,9 +96,19 @@ function currentPlayer(state: GameState): Player {
   return state.players[state.currentPlayerIndex];
 }
 
+/**
+ * カードを1枚引く。カードごとの weight に比例した確率で選ばれる。
+ * 同じカードを何枚も並べずに出現頻度を調整できるようにするための重み付き抽選。
+ */
 function drawRandomCard(pile: "chance" | "communityChest") {
   const deck = pile === "chance" ? CHANCE_CARDS : COMMUNITY_CHEST_CARDS;
-  return deck[Math.floor(Math.random() * deck.length)];
+  const total = deck.reduce((sum, card) => sum + cardWeight(card), 0);
+  let roll = Math.random() * total;
+  for (const card of deck) {
+    roll -= cardWeight(card);
+    if (roll < 0) return card;
+  }
+  return deck[deck.length - 1];
 }
 
 /**
@@ -330,7 +350,7 @@ function calcRentFor(state: GameState, square: PropertySquare | ConvenienceSquar
 }
 
 /**
- * pendingDrink/pendingTargetChoiceが解消された後の後始末をまとめて行う:
+ * pendingDrink/pendingChoiceが解消された後の後始末をまとめて行う:
  * 1. カード効果の残りキューがあれば続きを処理する
  * 2. それでも保留がなく、カードの移動効果で着地マスの解決が必要なら resolveLanding を連鎖させる
  */
@@ -343,12 +363,12 @@ const MAX_LANDING_CHAIN_DEPTH = 8;
 
 function finalizeCardResolution(state: GameState, depth = 0): GameState {
   let next = state;
-  if (next.pendingDrink || next.pendingTargetChoice) return next;
+  if (next.pendingDrink || next.pendingChoice) return next;
 
   if (next.pendingCardQueue.length > 0) {
     const player = currentPlayer(next);
     next = processCardEffectQueue(next, next.pendingCardQueue, player.id, next.pendingCardName ?? "カード");
-    if (next.pendingDrink || next.pendingTargetChoice) return next;
+    if (next.pendingDrink || next.pendingChoice) return next;
   }
 
   if (next.pendingLandingResolution) {
@@ -420,6 +440,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         incomingShield: false,
         outgoingMultiplier: 1,
         taxiTickets: 0,
+        previousPosition: 0,
         eliminatedOrder: null,
       }));
       return {
@@ -434,7 +455,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "ROLL_DICE": {
-      if (state.pendingPurchase || state.pendingDrink || state.pendingTargetChoice) return state;
+      if (state.pendingPurchase || state.pendingDrink || state.pendingChoice) return state;
       if (state.notices.length > 0) return state;
       const [d1, d2] = action.dice ?? [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
       const player = currentPlayer(state);
@@ -442,13 +463,17 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       const withLog: GameState = {
         ...state,
         lastDice: [d1, d2],
+        // 「財布を落とした」で戻る先。移動を始める前のマスを1ターン分だけ覚えておく。
+        players: state.players.map((p) =>
+          p.id === player.id ? { ...p, previousPosition: p.position } : p,
+        ),
         log: pushLog(state.log, state.turn, player.id, `${player.name}はサイコロで${d1}+${d2}=${steps}進んだ。`),
       };
       return advancePlayer(withLog, player.id, steps);
     }
 
     case "SERVE_JAIL_TURN": {
-      if (state.pendingDrink || state.pendingTargetChoice || state.notices.length > 0) return state;
+      if (state.pendingDrink || state.pendingChoice || state.notices.length > 0) return state;
       const player = currentPlayer(state);
       if (player.skipTurns <= 0) return state;
       const remaining = player.skipTurns - 1;
@@ -466,7 +491,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "USE_TAXI_TICKET": {
-      if (state.pendingDrink || state.pendingTargetChoice || state.notices.length > 0) return state;
+      if (state.pendingDrink || state.pendingChoice || state.notices.length > 0) return state;
       const player = currentPlayer(state);
       if (player.skipTurns <= 0 || player.taxiTickets <= 0) return state;
       return {
@@ -484,7 +509,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "PAY_TO_LEAVE_JAIL": {
-      if (state.pendingDrink || state.pendingTargetChoice || state.notices.length > 0) return state;
+      if (state.pendingDrink || state.pendingChoice || state.notices.length > 0) return state;
       const player = currentPlayer(state);
       if (player.skipTurns <= 0) return state;
       const cleared: GameState = {
@@ -543,7 +568,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "BUILD_SHOP": {
-      if (state.pendingDrink || state.pendingTargetChoice) return state;
+      if (state.pendingDrink || state.pendingChoice) return state;
       const player = currentPlayer(state);
       const square = state.squares[action.squareId];
       if (square.type !== "property") return state;
@@ -563,7 +588,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "END_TURN": {
-      if (state.pendingPurchase || state.pendingDrink || state.pendingTargetChoice) return state;
+      if (state.pendingPurchase || state.pendingDrink || state.pendingChoice) return state;
       if (state.notices.length > 0) return state;
       const alive = state.players.filter((p) => !p.eliminated);
       if (alive.length <= 1) {
@@ -727,7 +752,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "REPAY_MORTGAGE": {
-      if (state.pendingDrink || state.pendingTargetChoice) return state;
+      if (state.pendingDrink || state.pendingChoice) return state;
       const mortgage = state.mortgages[action.squareId];
       if (!mortgage) return state;
       const ownerId = state.ownership[action.squareId];
@@ -739,10 +764,48 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "CHOOSE_TARGET": {
-      if (!state.pendingTargetChoice) return state;
-      const { cardName, effect, currentPlayerId } = state.pendingTargetChoice;
-      const cleared: GameState = { ...state, pendingTargetChoice: null };
-      const next = resolveChosenTarget(cleared, effect, currentPlayerId, action.playerId, cardName);
+      const choice = state.pendingChoice;
+      if (!choice || choice.kind !== "player") return state;
+      const cleared: GameState = { ...state, pendingChoice: null };
+
+      // ジャンケンは相手を選んだあと、実際に勝負して勝敗を選んでもらう
+      if (choice.effect.kind === "duel") {
+        return {
+          ...cleared,
+          pendingChoice: {
+            kind: "duelOutcome",
+            cardName: choice.cardName,
+            currentPlayerId: choice.currentPlayerId,
+            opponentId: action.playerId,
+            amount: choice.effect.amount,
+          },
+        };
+      }
+      const next = resolveChosenTarget(cleared, choice.effect, choice.currentPlayerId, action.playerId, choice.cardName);
+      return finalizeCardResolution(next);
+    }
+
+    case "CHOOSE_DUEL_WINNER": {
+      const choice = state.pendingChoice;
+      if (!choice || choice.kind !== "duelOutcome") return state;
+      const cleared: GameState = { ...state, pendingChoice: null };
+      const next = resolveDuelOutcome(
+        cleared,
+        choice.currentPlayerId,
+        choice.opponentId,
+        action.winnerId,
+        choice.amount,
+        choice.cardName,
+      );
+      return finalizeCardResolution(next);
+    }
+
+    case "CHOOSE_PROPERTY": {
+      const choice = state.pendingChoice;
+      if (!choice || choice.kind !== "property") return state;
+      if (!choice.squareIds.includes(action.squareId)) return state;
+      const cleared: GameState = { ...state, pendingChoice: null };
+      const next = applyFreeUpgrade(cleared, choice.currentPlayerId, action.squareId, choice.cardName);
       return finalizeCardResolution(next);
     }
 

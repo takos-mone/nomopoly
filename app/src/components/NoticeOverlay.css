@@ -70,6 +70,10 @@
   border-top-color: var(--ink-soft);
 }
 
+.notice-card--elimination {
+  border-top-color: #6b2b2b;
+}
+
 /* ===== カードの焦らし演出 ===== */
 
 .notice-cardback {

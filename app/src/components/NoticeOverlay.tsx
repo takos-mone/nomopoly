@@ -52,6 +52,8 @@ function buildBody(notice: Notice, state: GameState): NoticeBody {
       return { tag: "強制移動", icon: "🚕", title: notice.title, detail: notice.detail, variant: "transport" };
     case "skip":
       return { tag: "一回休み", icon: "😴", title: notice.title, detail: notice.detail, variant: "skip" };
+    case "elimination":
+      return { tag: "脱落", icon: "💀", title: notice.title, detail: notice.detail, variant: "elimination" };
     case "coinFlip":
       return {
         tag: "コイントス",

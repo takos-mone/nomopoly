@@ -100,6 +100,25 @@ export function playCardReveal(): void {
   [659.25, 830.61, 987.77, 1318.51].forEach((freq, i) => playTone(freq, 0.22, "triangle", i * 0.07, 0.13));
 }
 
+/**
+ * ボタン共通のクリック音。
+ * 連打されても耳障りにならないよう、ごく短く小さい音にしている。
+ */
+export function playClick(): void {
+  playTone(880, 0.025, "sine", 0, 0.035);
+}
+
+/** 駒が1マス進むたびの軽いステップ音 */
+export function playStep(): void {
+  playTone(520, 0.04, "triangle", 0, 0.05);
+}
+
+/** 手番が始まるときの短い上昇音 */
+export function playTurnStart(): void {
+  playTone(587.33, 0.12, "sine", 0, 0.07);
+  playTone(880, 0.14, "sine", 0.08, 0.07);
+}
+
 export function playElimination(): void {
   playTone(400, 0.3, "sawtooth", 0, 0.1);
   playTone(300, 0.3, "sawtooth", 0.15, 0.1);

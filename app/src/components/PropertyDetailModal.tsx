@@ -26,7 +26,7 @@ export function PropertyDetailModal({ square, state, dispatch, onClose }: Proper
   const isMyTurn = state.phase === "playing" && owner?.id === currentPlayer?.id;
   const mortgage = state.mortgages[square.id];
   const blocked =
-    !!state.pendingPurchase || !!state.pendingDrink || !!state.pendingTargetChoice || state.notices.length > 0;
+    !!state.pendingPurchase || !!state.pendingDrink || !!state.pendingChoice || state.notices.length > 0;
   const monopoly = isFullGroupOwned(state, square);
   // 改装は取り消せない飲みが発生するので、確認を1段挟んで「戻る」で降りられるようにする
   const [confirmingBuild, setConfirmingBuild] = useState(false);

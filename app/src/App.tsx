@@ -2,7 +2,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { Board } from "./components/Board";
 import { DiceControls } from "./components/DiceControls";
 import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
-import { EventLog } from "./components/EventLog";
+import { EventLogModal } from "./components/EventLog";
 import { GameOverModal } from "./components/GameOverModal";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 import { NoticeOverlay } from "./components/NoticeOverlay";
@@ -13,7 +13,7 @@ import { SetupScreen } from "./components/SetupScreen";
 import { TargetChoiceModal } from "./components/TargetChoiceModal";
 import { useTokenAnimation } from "./hooks/useTokenAnimation";
 import { clearSavedGame, saveGame } from "./logic/persistence";
-import { isMuted, playElimination, setMuted } from "./logic/sound";
+import { isMuted, playClick, playElimination, playTurnStart, setMuted } from "./logic/sound";
 import { createInitialState, gameReducer } from "./state/gameReducer";
 import "./App.css";
 
@@ -23,10 +23,14 @@ function App() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [muted, setMutedState] = useState(isMuted);
   const [showHowTo, setShowHowTo] = useState(false);
+  const [showLog, setShowLog] = useState(false);
   // 強制移動で「歩かせず」ワープさせたいプレイヤー。通知を閉じた瞬間にセットする。
   const [snapPlayerIds, setSnapPlayerIds] = useState<number[]>([]);
   const visualPositions = useTokenAnimation(state.players, state.squares.length, snapPlayerIds);
   const prevEliminatedCount = useRef(0);
+  const prevTurnPlayer = useRef<number | null>(null);
+  // 手番が変わった瞬間だけ true。盤面のパネルをスライドイン/アウトさせる合図に使う。
+  const [turnPhase, setTurnPhase] = useState<"in" | "idle">("idle");
 
   useEffect(() => {
     const eliminatedCount = state.players.filter((p) => p.eliminated).length;
@@ -35,6 +39,31 @@ function App() {
     }
     prevEliminatedCount.current = eliminatedCount;
   }, [state.players]);
+
+  // ボタンのクリック音は1か所で面倒を見る。
+  // 各コンポーネントに個別に仕込むと付け忘れが出るうえ、
+  // 後からボタンを足したときに漏れるため、イベント委譲でまとめて拾う。
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest('button, [role="button"]')) playClick();
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, []);
+
+  // 手番の切り替わりを検知して、開始アニメーションと開始音を出す
+  useEffect(() => {
+    if (state.phase !== "playing") return;
+    const current = state.players[state.currentPlayerIndex]?.id ?? null;
+    if (current === null || current === prevTurnPlayer.current) return;
+    const isFirst = prevTurnPlayer.current === null;
+    prevTurnPlayer.current = current;
+    setTurnPhase("in");
+    if (!isFirst) playTurnStart();
+    const timer = setTimeout(() => setTurnPhase("idle"), 420);
+    return () => clearTimeout(timer);
+  }, [state.currentPlayerIndex, state.players, state.phase]);
 
   // ワープが済んだプレイヤーは通常のホップ移動に戻す
   useEffect(() => {
@@ -121,21 +150,24 @@ function App() {
       </header>
 
       {showHowTo && <HowToPlayModal onClose={() => setShowHowTo(false)} />}
+      {showLog && <EventLogModal state={state} onClose={() => setShowLog(false)} />}
       <div className="app-layout">
         <div className="app-layout__board">
           <Board
             state={state}
             onSelectSquare={setSelectedSquareId}
             visualPositions={visualPositions}            overlay={
-              !isAnimating && !noticesBlocking && !state.pendingDrink && !state.pendingTargetChoice ? (
-                <DiceControls state={state} dispatch={dispatch} />
+              !isAnimating && !noticesBlocking && !state.pendingDrink && !state.pendingChoice ? (
+                <DiceControls state={state} dispatch={dispatch} turnPhase={turnPhase} />
               ) : undefined
             }
           />
         </div>
         <div className="app-layout__sidebar">
           <PlayerPanel state={state} onSelectPlayer={setSelectedPlayerId} />
-          <EventLog state={state} />
+          <button type="button" className="secondary-button app-layout__log-button" onClick={() => setShowLog(true)}>
+            📜 ログを見る
+          </button>
         </div>
       </div>
 
@@ -162,7 +194,7 @@ function App() {
       )}
 
       {activeNotice && <NoticeOverlay notice={activeNotice} state={state} onDismiss={dismissNotice} />}
-      {!isAnimating && !noticesBlocking && state.pendingTargetChoice && (
+      {!isAnimating && !noticesBlocking && state.pendingChoice && (
         <TargetChoiceModal state={state} dispatch={dispatch} />
       )}
       {!isAnimating && !noticesBlocking && state.pendingDrink && (

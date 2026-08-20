@@ -13,8 +13,9 @@ const SAVE_STORAGE_KEY = "nomopoly-savegame";
  * v2: 通知キュー(notices)の追加、GOマスの改称と免除権ルール変更に伴い v1 を破棄。
  * v3: Player.skipNextTurn(boolean) を skipTurns(number) に変更、taxiTickets と pendingMoveSteps を追加。
  * v4: Player.eliminatedOrder と GameState.endCondition を追加。
+ * v5: pendingTargetChoice を pendingChoice に一般化、Player.previousPosition を追加。
  */
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 
 interface SavePayload {
   version: number;

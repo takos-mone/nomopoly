@@ -28,6 +28,22 @@
   animation: board-overlay-fade-in 0.15s ease;
 }
 
+/* 手番が変わった瞬間はスライドしながらフェードインさせて、交代を分かりやすくする */
+.board-overlay--turn-in {
+  animation: board-overlay-turn-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+@keyframes board-overlay-turn-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateX(-44px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateX(0) scale(1);
+  }
+}
+
 .board-overlay__title {
   margin: 0 0 6px;
   font-size: 15px;

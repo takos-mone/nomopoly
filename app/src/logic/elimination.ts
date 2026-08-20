@@ -1,5 +1,5 @@
 import type { GameState } from "../types";
-import { pushLog } from "./drinkEngine";
+import { pushLog, pushNotice } from "./drinkEngine";
 
 /** 累計飲酒量の脱落ラインのデフォルト値(unit)。セットアップ画面で変更可能 */
 export const DEFAULT_ELIMINATION_THRESHOLD = 80;
@@ -31,7 +31,14 @@ function eliminatePlayer(state: GameState, playerId: number): GameState {
     `${player.name}は累計${player.totalUnitsDrunk} unitに達して脱落…!所有物件はすべて銀行に返却された。`,
   );
 
-  return { ...state, players, ownership, shopLevel, mortgages, log };
+  const eliminated: GameState = { ...state, players, ownership, shopLevel, mortgages, log };
+  // 誰が抜けたのかを全員に知らせる(タップで進行)
+  return pushNotice(eliminated, {
+    kind: "elimination",
+    playerId,
+    title: `${player.name} 脱落…`,
+    detail: `累計${player.totalUnitsDrunk} unitに到達。所有していた物件はすべて銀行に返却された。おつかれさま!`,
+  });
 }
 
 /**

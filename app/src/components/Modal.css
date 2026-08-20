@@ -369,6 +369,26 @@
   transform: translateY(-1px);
 }
 
+.target-choice-modal__tail {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.target-choice-modal__property {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.target-choice-modal__property small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
 .target-choice-modal__swatch {
   width: 28px;
   height: 28px;

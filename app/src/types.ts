@@ -81,6 +81,8 @@ export interface Player {
   outgoingMultiplier: number; // 次にカードで誰かに飲ませる量の倍率(今夜は無礼講)。使用後1に戻る
   /** 「タクシーチケット」の所持枚数。タクシー待機所の休みを1回ぶん帳消しにできる使い捨て */
   taxiTickets: number;
+  /** 直前に止まっていたマス。「財布を落とした」で戻る先に使う */
+  previousPosition: number;
   /** 何番目に脱落したか(1始まり)。未脱落は null。「脱落が遅い順」の順位付けに使う */
   eliminatedOrder: number | null;
 }
@@ -110,12 +112,36 @@ export interface PendingDrink {
   repaySquareId?: number;
 }
 
-/** カード効果で「指名」が必要な場合の選択待ち状態 */
-export interface PendingTargetChoice {
-  cardName: string;
-  effect: CardEffect;
-  currentPlayerId: number;
-}
+/**
+ * カード効果でプレイヤーの選択が必要な場合の待ち状態。
+ * 指名だけでなく「ジャンケンの勝敗」「改装する物件」も同じ仕組みで扱う。
+ */
+export type PendingChoice =
+  /** 対象プレイヤーを1人選ぶ */
+  | {
+      kind: "player";
+      cardName: string;
+      effect: CardEffect;
+      currentPlayerId: number;
+      candidateIds: number[];
+      prompt: string;
+    }
+  /** 実際にジャンケンをして、勝った方を選ぶ */
+  | {
+      kind: "duelOutcome";
+      cardName: string;
+      currentPlayerId: number;
+      opponentId: number;
+      amount: number;
+    }
+  /** 改装する自分の物件を選ぶ */
+  | {
+      kind: "property";
+      cardName: string;
+      currentPlayerId: number;
+      squareIds: number[];
+      prompt: string;
+    };
 
 export interface LogEntry {
   id: number;
@@ -150,7 +176,9 @@ export type Notice =
   /** 休みでターンを飛ばされたことを本人に知らせる */
   | { kind: "skip"; playerId: number; remainingTurns: number; title: string; detail: string }
   /** コイントス。表示側でコインを回してから結果を見せる */
-  | { kind: "coinFlip"; playerId: number; heads: boolean; title: string; detail: string };
+  | { kind: "coinFlip"; playerId: number; heads: boolean; title: string; detail: string }
+  /** 誰が脱落したかを全員に知らせる */
+  | { kind: "elimination"; playerId: number; title: string; detail: string };
 
 export interface GameState {
   players: Player[];
@@ -164,7 +192,7 @@ export interface GameState {
   lastDice: [number, number] | null;
   pendingPurchase: { squareId: number; price: number } | null;
   pendingDrink: PendingDrink | null;
-  pendingTargetChoice: PendingTargetChoice | null;
+  pendingChoice: PendingChoice | null;
   /** 現在処理中のカードの、まだ適用していない残り効果(1枚のカードが複数人に飲ませる場合の待ち行列) */
   pendingCardQueue: CardEffect[];
   pendingCardName: string | null;

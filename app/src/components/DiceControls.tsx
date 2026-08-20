@@ -7,13 +7,15 @@ import { Dice } from "./Dice";
 interface DiceControlsProps {
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
+  /** 手番が始まった直後は "in"。スライドインさせるために使う */
+  turnPhase: "in" | "idle";
 }
 
 function randomFace(): number {
   return 1 + Math.floor(Math.random() * 6);
 }
 
-export function DiceControls({ state, dispatch }: DiceControlsProps) {
+export function DiceControls({ state, dispatch, turnPhase }: DiceControlsProps) {
   const current = state.players[state.currentPlayerIndex];
   const hasRolledThisTurn = state.lastDice !== null;
   const [rolling, setRolling] = useState(false);
@@ -77,7 +79,7 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
     const square = state.squares[state.pendingPurchase.squareId];
     const price = state.pendingPurchase.price;
     return (
-      <div className="board-overlay">
+      <div className={turnPhase === "in" ? "board-overlay board-overlay--turn-in" : "board-overlay"}>
         {!confirmingPurchase ? (
           <div className="purchase-prompt">
             <p>
@@ -114,7 +116,7 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
   // 休み中は移動できない。休むか、飲んで抜け出すかだけを選ばせる。
   if (jailTurnsLeft > 0) {
     return (
-      <div className="board-overlay">
+      <div className={turnPhase === "in" ? "board-overlay board-overlay--turn-in" : "board-overlay"}>
         <h3 className="board-overlay__title">{current.name}は一回休み</h3>
         <p className="board-overlay__jail">
           🚕 タクシー待機所で待機中(残り {jailTurnsLeft} ターン)
@@ -137,7 +139,7 @@ export function DiceControls({ state, dispatch }: DiceControlsProps) {
   }
 
   return (
-    <div className="board-overlay">
+    <div className={turnPhase === "in" ? "board-overlay board-overlay--turn-in" : "board-overlay"}>
       <h3 className="board-overlay__title">{current.name}のターン</h3>
 
       {showDiceTray && (

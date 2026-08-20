@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { playStep } from "../logic/sound";
 import type { Player } from "../types";
 
 const HOP_INTERVAL_MS = 280;
@@ -71,6 +72,7 @@ export function useTokenAnimation(
             return prev;
           }
           const nextPos = (cur + 1) % boardLength;
+          playStep();
           timers.current[p.id] = setTimeout(scheduleStep, HOP_INTERVAL_MS);
           return { ...prev, [p.id]: nextPos };
         });
