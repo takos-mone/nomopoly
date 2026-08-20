@@ -9,7 +9,6 @@
   border-radius: 14px;
   width: 100%;
   max-width: 820px;
-  aspect-ratio: 1 / 1;
   box-shadow: var(--shadow-strong);
 }
 
@@ -45,6 +44,11 @@
 
 .board-square {
   position: relative;
+  /* 正方形はグリッド側ではなくセル側で担保する。
+     .board-grid に aspect-ratio を置くと width:100% と併用したとき
+     高さが誤計算される(実測で 355px 幅に対し 820px 高)ため、
+     確定幅を持つグリッドトラック上のセルに掛けて行高を導出させる。 */
+  aspect-ratio: 1 / 1;
   background: #fffdf7;
   border: none;
   border-bottom: 3px solid transparent;

@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { DEFAULT_ELIMINATION_THRESHOLD } from "../logic/elimination";
+import { clearSavedGame, formatSavedAt, loadGame } from "../logic/persistence";
+import type { GameState } from "../types";
 import { HowToPlayModal } from "./HowToPlayModal";
 
 interface SetupScreenProps {
   onStart: (names: string[], eliminationThreshold: number) => void;
+  onResume: (state: GameState) => void;
 }
 
-export function SetupScreen({ onStart }: SetupScreenProps) {
+export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   const [count, setCount] = useState(4);
   const [names, setNames] = useState<string[]>(["", "", "", "", "", ""]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
   const [eliminationThreshold, setEliminationThreshold] = useState(DEFAULT_ELIMINATION_THRESHOLD);
+  // マウント時に一度だけ読み込む。破棄したら再表示しないので state で保持する。
+  const [savedGame, setSavedGame] = useState(loadGame);
 
   const updateName = (index: number, value: string) => {
     setNames((prev) => prev.map((n, i) => (i === index ? value : n)));
@@ -24,6 +29,29 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       <p className="setup-caution">
         ※ 1 unit の実量は今日の飲み会で自由に決めてください。無理なく、ノンアルコールでも楽しめます。
       </p>
+
+      {savedGame && (
+        <div className="setup-resume">
+          <p className="setup-resume__label">
+            中断中のゲームがあります({savedGame.state.players.length}人 / {savedGame.state.turn}ターン目
+            {formatSavedAt(savedGame.savedAt) && ` / ${formatSavedAt(savedGame.savedAt)}`})
+          </p>
+          <button type="button" className="primary-button" onClick={() => onResume(savedGame.state)}>
+            続きから再開する
+          </button>
+          <button
+            type="button"
+            className="setup-resume__discard"
+            onClick={() => {
+              clearSavedGame();
+              setSavedGame(null);
+            }}
+          >
+            破棄して新しく始める
+          </button>
+        </div>
+      )}
+
       <label>
         プレイヤー人数:
         <select value={count} onChange={(e) => setCount(Number(e.target.value))}>

@@ -31,6 +31,7 @@ export type GameAction =
   | { type: "REPAY_MORTGAGE"; squareId: number }
   | { type: "CHOOSE_TARGET"; playerId: number }
   | { type: "USE_EXEMPTION" }
+  | { type: "RESUME_GAME"; state: GameState }
   | { type: "RESET_GAME" };
 
 let cardDrawSeq = 0;
@@ -177,6 +178,11 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     case "RESET_GAME":
       return createInitialState();
 
+    // 保存済みゲームからの再開。盤面データ(squares)はコード側の最新定義を使い、
+    // セーブにはプレイヤーの進行状況だけを反映させる。
+    case "RESUME_GAME":
+      return { ...action.state, squares: createInitialState().squares };
+
     case "START_GAME": {
       const players: Player[] = action.names.map((name, i) => ({
         id: i,
@@ -209,7 +215,9 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       const steps = d1 + d2;
       const oldPos = player.position;
       const newPos = (oldPos + steps) % BOARD.length;
-      const passedGo = newPos < oldPos || (oldPos === 0 && steps > 0);
+      // 盤面を1周して GO を「通過」した場合のみ。GO から出発しただけでは通過ではない
+      // (以前は oldPos === 0 も通過扱いにしており、全員が初回ロールで免除権を得ていた)。
+      const passedGo = newPos < oldPos;
       const landedGo = newPos === GO_SQUARE_ID;
 
       let exemptionGain = 0;

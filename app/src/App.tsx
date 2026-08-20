@@ -11,6 +11,7 @@ import { PropertyDetailModal } from "./components/PropertyDetailModal";
 import { SetupScreen } from "./components/SetupScreen";
 import { TargetChoiceModal } from "./components/TargetChoiceModal";
 import { useTokenAnimation } from "./hooks/useTokenAnimation";
+import { clearSavedGame, saveGame } from "./logic/persistence";
 import { isMuted, playElimination, setMuted } from "./logic/sound";
 import { createInitialState, gameReducer } from "./state/gameReducer";
 import "./App.css";
@@ -32,10 +33,21 @@ function App() {
     prevEliminatedCount.current = eliminatedCount;
   }, [state.players]);
 
+  // リロードやタブの破棄でゲームが消えないよう、進行中は常に保存しておく。
+  // セットアップ画面に戻った(＝新しいゲームを始めた)時点で保存を破棄する。
+  useEffect(() => {
+    if (state.phase === "setup") {
+      clearSavedGame();
+    } else {
+      saveGame(state);
+    }
+  }, [state]);
+
   if (state.phase === "setup") {
     return (
       <SetupScreen
         onStart={(names, eliminationThreshold) => dispatch({ type: "START_GAME", names, eliminationThreshold })}
+        onResume={(saved) => dispatch({ type: "RESUME_GAME", state: saved })}
       />
     );
   }

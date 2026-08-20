@@ -98,6 +98,34 @@
   padding: 10px 14px;
 }
 
+.setup-resume {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(95, 158, 111, 0.1);
+  border: 1px solid var(--matcha);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.setup-resume__label {
+  margin: 0;
+  font-size: 13px;
+  color: var(--matcha-dark);
+  font-weight: 700;
+}
+
+.setup-resume__discard {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px;
+  text-decoration: underline;
+}
+
 .setup-names {
   display: flex;
   flex-direction: column;
