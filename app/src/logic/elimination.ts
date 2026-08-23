@@ -1,8 +1,12 @@
 import type { GameState } from "../types";
 import { pushLog, pushNotice } from "./drinkEngine";
 
-/** 累計飲酒量の脱落ラインのデフォルト値(unit)。セットアップ画面で変更可能 */
-export const DEFAULT_ELIMINATION_THRESHOLD = 80;
+/**
+ * 累計飲酒量の脱落ラインのデフォルト値(unit)。セットアップ画面で変更可能。
+ * v3の飲み代引き下げに合わせて 80 → 50 に調整した(飲み代を下げたまま
+ * 脱落ラインを据え置くと、1ゲームが間延びしてしまうため)。
+ */
+export const DEFAULT_ELIMINATION_THRESHOLD = 50;
 
 function eliminatePlayer(state: GameState, playerId: number): GameState {
   const player = state.players.find((p) => p.id === playerId)!;

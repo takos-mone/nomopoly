@@ -1,5 +1,6 @@
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 import { useEffect, useState } from "react";
+import { Dice } from "./Dice";
 import { Illustration, type Pose } from "./Illustration";
 import { OwnableSquareFacts } from "./PropertySummary";
 import { describeSquare } from "../logic/squareInfo";
@@ -51,6 +52,8 @@ function poseFor(notice: Notice): Pose {
       return "collapsed";
     case "coinFlip":
       return notice.heads ? "cheer" : "dizzy";
+    case "utilityDice":
+      return "merryWalk";
   }
 }
 
@@ -77,6 +80,16 @@ function buildBody(notice: Notice, state: GameState): NoticeBody {
       return { tag: "一回休み", icon: "😴", title: notice.title, detail: notice.detail, variant: "skip" };
     case "elimination":
       return { tag: "脱落", icon: "💀", title: notice.title, detail: notice.detail, variant: "elimination" };
+    case "utilityDice":
+      return {
+        tag: "交通",
+        icon: "🎲",
+        title: `${notice.squareName} の飲み代`,
+        detail: notice.doubled
+          ? `出た目 ${notice.dieRoll} × 2(2種類独占)= ${notice.amount} unit`
+          : `出た目 ${notice.dieRoll} = ${notice.amount} unit`,
+        variant: "landing",
+      };
     case "coinFlip":
       return {
         tag: "コイントス",
@@ -104,8 +117,9 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
   const player = playerId !== null ? state.players.find((p) => p.id === playerId) : undefined;
   const isCard = notice.kind === "card";
   const isCoin = notice.kind === "coinFlip";
-  // カードとコイントスは一度伏せて見せ、少し焦らしてから結果を出す
-  const teasing = isCard || isCoin;
+  const isUtilityDice = notice.kind === "utilityDice";
+  // カード・コイントス・交通のサイコロは一度伏せて見せ、少し焦らしてから結果を出す
+  const teasing = isCard || isCoin || isUtilityDice;
   const [revealed, setRevealed] = useState(!teasing);
 
   useEffect(() => {
@@ -120,10 +134,10 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
         setRevealed(true);
         playCardReveal();
       },
-      isCoin ? COIN_TEASE_MS : CARD_TEASE_MS,
+      isCoin || isUtilityDice ? COIN_TEASE_MS : CARD_TEASE_MS,
     );
     return () => clearTimeout(timer);
-  }, [teasing, isCoin, notice]);
+  }, [teasing, isCoin, isUtilityDice, notice]);
 
   /** 焦らし中のタップは「早送り」。結果が出てからのタップで次へ進む */
   const handleActivate = () => {
@@ -134,6 +148,26 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
     }
     onDismiss();
   };
+
+  // 交通マスのサイコロは、実際に転がしてから出目を見せる
+  if (notice.kind === "utilityDice" && !revealed) {
+    return (
+      <div
+        className="notice-overlay"
+        role="button"
+        tabIndex={0}
+        onClick={handleActivate}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") handleActivate();
+        }}
+      >
+        <div className="notice-utility-dice">
+          <Dice value={notice.dieRoll} spinning />
+          <span className="notice-coin__hint">{notice.squareName}のサイコロを振っています…</span>
+        </div>
+      </div>
+    );
+  }
 
   if (isCoin && !revealed) {
     return (
@@ -189,7 +223,13 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
         {teasing && <div className="notice-card__burst" aria-hidden="true" />}
         <span className="notice-card__tag">{body.tag}</span>
         <Illustration pose={poseFor(notice)} size={104} className="illustration--notice" />
-        <div className="notice-card__icon">{body.icon}</div>
+        {notice.kind === "utilityDice" ? (
+          <div className="notice-card__dice">
+            <Dice value={notice.dieRoll} spinning={false} landed />
+          </div>
+        ) : (
+          <div className="notice-card__icon">{body.icon}</div>
+        )}
         <h3 className="notice-card__title">{body.title}</h3>
         {propertyFactsSquare ? (
           <div className="notice-card__property">

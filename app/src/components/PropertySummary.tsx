@@ -4,6 +4,7 @@ import {
   CONVENIENCE_RENT_BY_COUNT,
   MONOPOLY_RENT_MULTIPLIER,
   calcBuildCost,
+  type RentGrowth,
   getPropertyRentBreakdown,
   tierFromLevel,
 } from "../logic/rent";
@@ -35,12 +36,14 @@ export function RentTable({
   price,
   currentTier,
   monopoly,
+  growth,
 }: {
   price: number;
   currentTier?: string;
   monopoly: boolean;
+  growth: RentGrowth;
 }) {
-  const rows = getPropertyRentBreakdown(price, monopoly);
+  const rows = getPropertyRentBreakdown(price, monopoly, growth);
   return (
     <table className="detail-modal__rent-table">
       <tbody>
@@ -97,6 +100,7 @@ export function OwnableSquareFacts({ square, state }: { square: OwnableSquare; s
           <RentTable
             price={square.price}
             monopoly={monopoly}
+            growth={state.rentGrowth}
             currentTier={owner ? tierFromLevel(state.shopLevel[square.id] ?? 0) : undefined}
           />
           {monopoly && (

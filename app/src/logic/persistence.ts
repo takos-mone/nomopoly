@@ -15,8 +15,9 @@ const SAVE_STORAGE_KEY = "nomopoly-savegame";
  * v4: Player.eliminatedOrder と GameState.endCondition を追加。
  * v5: pendingTargetChoice を pendingChoice に一般化、Player.previousPosition を追加。
  * v6: GameState.pendingTrade(交渉)を追加。
+ * v7: GameState.rentGrowth を追加、飲み代の式と既定の脱落ラインを変更。
  */
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 
 interface SavePayload {
   version: number;

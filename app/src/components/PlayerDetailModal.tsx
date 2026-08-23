@@ -68,7 +68,7 @@ export function PlayerDetailModal({ player, state, dispatch, onClose, onSelectSq
                   {sq.type === "property" && !mortgage && (
                     <span className="detail-modal__owned-meta">
                       {COLOR_GROUP_LABEL[sq.colorGroup]} / Lv.{level >= 5 ? "MAX" : level} / 現在の飲み代{" "}
-                      {calcPropertyRent(sq.price, level, isFullGroupOwned(state, player.id, sq.colorGroup))} unit
+                      {calcPropertyRent(sq.price, level, isFullGroupOwned(state, player.id, sq.colorGroup), state.rentGrowth)} unit
                     </span>
                   )}
                   {mortgage && <span className="detail-modal__owned-meta">返済額 {mortgage.debt} unit(飲み代・改装は停止中)</span>}

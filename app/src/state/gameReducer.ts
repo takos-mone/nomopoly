@@ -11,8 +11,10 @@ import { createPendingDrink, pushGain, pushLog, pushNotice } from "../logic/drin
 import { DEFAULT_ELIMINATION_THRESHOLD, applyElimination } from "../logic/elimination";
 import {
   CONVENIENCE_RENT_BY_COUNT,
+  DEFAULT_RENT_GROWTH,
   GO_LAND_EXEMPTION,
   GO_PASS_EXEMPTION,
+  type RentGrowth,
   calcBuildCost,
   calcMortgageExemption,
   calcPropertyRent,
@@ -22,7 +24,13 @@ import type { EndCondition, GameState, Player, PropertySquare, ConvenienceSquare
 import { isEmptyTradeOffer, isOwnable } from "../types";
 
 export type GameAction =
-  | { type: "START_GAME"; names: string[]; eliminationThreshold?: number; endCondition?: EndCondition }
+  | {
+      type: "START_GAME";
+      names: string[];
+      eliminationThreshold?: number;
+      endCondition?: EndCondition;
+      rentGrowth?: RentGrowth;
+    }
   /** dice は UI 側で先に出目を確定して見せてから渡す。省略時はここで振る */
   | { type: "ROLL_DICE"; dice?: [number, number] }
   | { type: "CONFIRM_PURCHASE" }
@@ -41,7 +49,8 @@ export type GameAction =
   | { type: "CHOOSE_DUEL_WINNER"; winnerId: number }
   /** 無料改装する物件を選ぶ */
   | { type: "CHOOSE_PROPERTY"; squareId: number }
-  | { type: "USE_EXEMPTION" }
+  /** amount を渡すと部分的に使える。省略時は使える上限まで */
+  | { type: "USE_EXEMPTION"; amount?: number }
   | { type: "RESUME_GAME"; state: GameState }
   | { type: "DISMISS_NOTICE" }
   /** 3 unit飲んでタクシー待機所の休みを打ち切る */
@@ -86,6 +95,7 @@ export function createInitialState(): GameState {
     pendingMoveSteps: null,
     eliminationThreshold: DEFAULT_ELIMINATION_THRESHOLD,
     endCondition: "lastSurvivor",
+    rentGrowth: DEFAULT_RENT_GROWTH,
     phase: "setup",
   };
 }
@@ -206,6 +216,15 @@ function resolveLanding(state: GameState, depth = 0): GameState {
       log(
         `${square.name}: サイコロの目${dieRoll}${ownedCount >= 2 ? " ×2(2種類独占)" : ""} = ${amount} unit`,
       );
+      // 出目を実際に見せる。ログだけだと「サイコロを振る」ルールが動いていないように見える。
+      next = pushNotice(next, {
+        kind: "utilityDice",
+        playerId: player.id,
+        squareName: square.name,
+        dieRoll,
+        doubled: ownedCount >= 2,
+        amount,
+      });
       next = grantRentIncome(next, ownerId, square.name, amount);
       next = createPendingDrink(next, player.id, amount, `${square.name}(${owner.name}へ)`);
     } else {
@@ -362,7 +381,7 @@ function calcRentFor(state: GameState, square: PropertySquare | ConvenienceSquar
   if (square.type === "property") {
     const level = state.shopLevel[square.id] ?? 0;
     const monopoly = ownsFullGroup(state, ownerId, square.colorGroup);
-    return calcPropertyRent(square.price, level, monopoly);
+    return calcPropertyRent(square.price, level, monopoly, state.rentGrowth);
   }
   const ownedCount = state.squares.filter(
     (sq) => sq.type === "convenience" && state.ownership[sq.id] === ownerId,
@@ -471,6 +490,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         turn: 1,
         eliminationThreshold: action.eliminationThreshold ?? DEFAULT_ELIMINATION_THRESHOLD,
         endCondition: action.endCondition ?? "lastSurvivor",
+        rentGrowth: action.rentGrowth ?? DEFAULT_RENT_GROWTH,
         log: pushLog([], 1, -1, "ゲーム開始!"),
       };
     }
@@ -702,7 +722,10 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       if (!state.pendingDrink) return state;
       const { playerId, amount: pendingAmount, reason } = state.pendingDrink;
       const player = state.players.find((p) => p.id === playerId)!;
-      const used = Math.min(player.exemptionUnits, pendingAmount);
+      // 使う量はプレイヤーが決める(未指定なら使える上限まで)。
+      // 残高と請求額の両方を超えないよう丸める。
+      const requested = action.amount ?? Math.min(player.exemptionUnits, pendingAmount);
+      const used = Math.min(player.exemptionUnits, pendingAmount, Math.max(0, Math.floor(requested)));
       if (used <= 0) return state;
       const players = state.players.map((p) =>
         p.id === playerId ? { ...p, exemptionUnits: p.exemptionUnits - used } : p,

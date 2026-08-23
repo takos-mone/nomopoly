@@ -1,4 +1,5 @@
 import type { CardEffect } from "./data/cards";
+import type { RentGrowth } from "./logic/rent";
 
 export type ColorGroup =
   | "brown"
@@ -201,7 +202,20 @@ export type Notice =
   /** コイントス。表示側でコインを回してから結果を見せる */
   | { kind: "coinFlip"; playerId: number; heads: boolean; title: string; detail: string }
   /** 誰が脱落したかを全員に知らせる */
-  | { kind: "elimination"; playerId: number; title: string; detail: string };
+  | { kind: "elimination"; playerId: number; title: string; detail: string }
+  /**
+   * 交通(タクシー会社・送迎バス会社)の飲み代を決めるサイコロ。
+   * 出目は reducer 側で確定済みだが、表示側でサイコロを振る演出を見せるために通知として積む
+   * (ログにしか出ていないと「サイコロを振る」ルールが機能していないように見えるため)。
+   */
+  | {
+      kind: "utilityDice";
+      playerId: number;
+      squareName: string;
+      dieRoll: number;
+      doubled: boolean;
+      amount: number;
+    };
 
 export interface GameState {
   players: Player[];
@@ -234,5 +248,7 @@ export interface GameState {
   eliminationThreshold: number;
   /** ゲームの終わり方(セットアップ画面で選択) */
   endCondition: EndCondition;
+  /** 改装レベルごとに飲み代がどれだけ跳ね上がるか(セットアップの詳細設定で選択) */
+  rentGrowth: RentGrowth;
   phase: "setup" | "playing" | "finished";
 }

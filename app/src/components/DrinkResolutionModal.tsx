@@ -12,9 +12,11 @@ interface DrinkResolutionModalProps {
 }
 
 export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalProps) {
-  const [mode, setMode] = useState<"main" | "mortgage" | "negotiate">("main");
+  const [mode, setMode] = useState<"main" | "mortgage" | "negotiate" | "exemption">("main");
   const [giveSquareId, setGiveSquareId] = useState<number | null>(null);
   const [targetPlayerId, setTargetPlayerId] = useState<number | null>(null);
+  // 免除権を何unit使うか。全部使い切らず一部だけ充てたい場面があるので選べるようにする。
+  const [exemptionAmount, setExemptionAmount] = useState(0);
 
   const pending = state.pendingDrink;
   if (!pending) return null;
@@ -27,10 +29,13 @@ export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalPr
   // 脱落したプレイヤーには交渉で肩代わりさせられない(ゲームから抜けているため)
   const otherPlayers = state.players.filter((p) => p.id !== player.id && !p.eliminated);
 
+  const maxExemption = Math.min(player.exemptionUnits, pending.amount);
+
   const close = () => {
     setMode("main");
     setGiveSquareId(null);
     setTargetPlayerId(null);
+    setExemptionAmount(0);
   };
 
   return (
@@ -47,10 +52,11 @@ export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalPr
               <button
                 className="primary-button"
                 onClick={() => {
-                  dispatch({ type: "USE_EXEMPTION" });
+                  setExemptionAmount(maxExemption);
+                  setMode("exemption");
                 }}
               >
-                免除権を使う(所持{player.exemptionUnits}u / 最大{Math.min(player.exemptionUnits, pending.amount)}u軽減)
+                免除権を使う(所持{player.exemptionUnits}u / 最大{maxExemption}u軽減)
               </button>
             )}
             <button
@@ -77,6 +83,57 @@ export function DrinkResolutionModal({ state, dispatch }: DrinkResolutionModalPr
             </button>
             <button className="secondary-button" onClick={() => setMode("negotiate")}>
               交渉する
+            </button>
+          </div>
+        )}
+
+        {mode === "exemption" && (
+          <div className="drink-modal__panel">
+            <p>
+              免除権を何 unit 使いますか?(所持 {player.exemptionUnits}u / この飲みには最大 {maxExemption}u まで)
+            </p>
+            <div className="drink-modal__exemption-row">
+              <button
+                type="button"
+                className="small-button"
+                disabled={exemptionAmount <= 1}
+                onClick={() => setExemptionAmount((v) => Math.max(1, v - 1))}
+              >
+                −
+              </button>
+              <span className="drink-modal__exemption-value">{exemptionAmount}u</span>
+              <button
+                type="button"
+                className="small-button"
+                disabled={exemptionAmount >= maxExemption}
+                onClick={() => setExemptionAmount((v) => Math.min(maxExemption, v + 1))}
+              >
+                ＋
+              </button>
+            </div>
+            <input
+              className="drink-modal__exemption-slider"
+              type="range"
+              min={1}
+              max={maxExemption}
+              value={exemptionAmount}
+              onChange={(e) => setExemptionAmount(Number(e.target.value))}
+            />
+            <p className="drink-modal__exemption-preview">
+              残り <strong>{pending.amount - exemptionAmount} unit</strong> を飲みます
+              (免除権は {player.exemptionUnits - exemptionAmount}u 残ります)
+            </p>
+            <button
+              className="primary-button"
+              onClick={() => {
+                dispatch({ type: "USE_EXEMPTION", amount: exemptionAmount });
+                setMode("main");
+              }}
+            >
+              この量だけ使う
+            </button>
+            <button className="small-button" onClick={() => setMode("main")}>
+              戻る
             </button>
           </div>
         )}

@@ -198,6 +198,23 @@
   animation: notice-hint-blink 1s ease-in-out infinite;
 }
 
+/* ===== 交通マスのサイコロ ===== */
+
+.notice-utility-dice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.notice-card__dice {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 10px;
+}
+
 /* ===== コイントス ===== */
 
 .notice-coin {

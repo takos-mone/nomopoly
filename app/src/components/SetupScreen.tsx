@@ -1,13 +1,26 @@
 import { useState } from "react";
 import { DEFAULT_ELIMINATION_THRESHOLD } from "../logic/elimination";
+import {
+  DEFAULT_RENT_GROWTH,
+  RENT_GROWTH_LABEL,
+  type RentGrowth,
+  calcPropertyRent,
+} from "../logic/rent";
 import { clearSavedGame, formatSavedAt, loadGame } from "../logic/persistence";
 import type { EndCondition, GameState } from "../types";
 import { HowToPlayModal } from "./HowToPlayModal";
 
 interface SetupScreenProps {
-  onStart: (names: string[], eliminationThreshold: number, endCondition: EndCondition) => void;
+  onStart: (
+    names: string[],
+    eliminationThreshold: number,
+    endCondition: EndCondition,
+    rentGrowth: RentGrowth,
+  ) => void;
   onResume: (state: GameState) => void;
 }
+
+const RENT_GROWTHS: RentGrowth[] = ["gentle", "normal", "steep"];
 
 const END_CONDITIONS: { value: EndCondition; label: string; detail: string }[] = [
   {
@@ -30,6 +43,7 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   // 空欄(=デフォルトのまま)を表現できないため。
   const [thresholdInput, setThresholdInput] = useState("");
   const [endCondition, setEndCondition] = useState<EndCondition>("lastSurvivor");
+  const [rentGrowth, setRentGrowth] = useState<RentGrowth>(DEFAULT_RENT_GROWTH);
   // マウント時に一度だけ読み込む。破棄したら再表示しないので state で保持する。
   const [savedGame, setSavedGame] = useState(loadGame);
 
@@ -153,9 +167,40 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
         ))}
       </div>
 
+      <div className="setup-endcondition">
+        <span className="setup-endcondition__label">飲み代の上がり方(改装レベルごと)</span>
+        {RENT_GROWTHS.map((g) => (
+          <label
+            key={g}
+            className={
+              rentGrowth === g
+                ? "setup-endcondition__option setup-endcondition__option--selected"
+                : "setup-endcondition__option"
+            }
+          >
+            <input
+              type="radio"
+              name="rent-growth"
+              value={g}
+              checked={rentGrowth === g}
+              onChange={() => setRentGrowth(g)}
+            />
+            <span>
+              <strong>{RENT_GROWTH_LABEL[g].label}</strong>
+              <small>{RENT_GROWTH_LABEL[g].detail}</small>
+            </span>
+          </label>
+        ))}
+        {/* 抽象的な言葉だけだと差が伝わらないので、代表的な物件の実数で見せる */}
+        <p className="setup-threshold__hint">
+          例) 価格10 unitの土地: 土地のみ {calcPropertyRent(10, 0, false, rentGrowth)}u → Lv.3{" "}
+          {calcPropertyRent(10, 3, false, rentGrowth)}u → 最大 {calcPropertyRent(10, 5, false, rentGrowth)}u
+        </p>
+      </div>
+
       <button
         className="primary-button"
-        onClick={() => onStart(names.slice(0, count), resolvedThreshold, endCondition)}
+        onClick={() => onStart(names.slice(0, count), resolvedThreshold, endCondition, rentGrowth)}
       >
         ゲーム開始
       </button>

@@ -1,18 +1,39 @@
 /**
- * docs/board-pricing.md 0章の式に対応(v2バランス調整版)。
- * v1からの変更点: 最初の訪問(landAlone)の飲酒量を引き上げ、改装費を価格連動の
- * 低めの式に変更し、土地購入価格そのものも全体的に引き下げた。
+ * 飲み代の計算。
+ *
+ * v3で「全体的に飲む量が多すぎる」という指摘を受けて式を作り直した。
+ * 以前はレベルごとに手書きの係数テーブルを持っていたが、
+ *   飲み代 = 価格 × RENT_BASE_RATE × (成長率 ^ 店舗レベル)
+ * という単純な等比の式に変え、**成長率だけを設定で差し替えられる**ようにしている。
+ * こうするとレベルごとの上がり方(グラデーション)を1つの数値で調整できる。
  */
-export const RENT_MULTIPLIER = {
-  land: 0.4,
-  lv1: 0.8,
-  lv2: 1.3,
-  lv3: 2.0,
-  lv4: 2.8,
-  max: 4.0,
-} as const;
+export const RENT_BASE_RATE = 0.3;
 
-export type RentTier = keyof typeof RENT_MULTIPLIER;
+/** レベルごとの飲み代の上がり方。セットアップの詳細設定で選べる */
+export type RentGrowth = "gentle" | "normal" | "steep";
+
+/**
+ * 等比の公比。脱落ライン(既定50 unit)を基準に、
+ * 最高額の物件(価格27)を最大レベルまで育てたときの飲み代が
+ * だいたい 25 / 36 / 62 unit に収まるよう選んでいる。
+ * これ以上大きくすると、1回止まっただけで脱落する事故が増えて大味になる。
+ */
+export const RENT_GROWTH_FACTOR: Record<RentGrowth, number> = {
+  gentle: 1.25,
+  normal: 1.35,
+  steep: 1.5,
+};
+
+export const DEFAULT_RENT_GROWTH: RentGrowth = "normal";
+
+export const RENT_GROWTH_LABEL: Record<RentGrowth, { label: string; detail: string }> = {
+  gentle: { label: "ゆるやか", detail: "改装しても飲み代が急には上がらない。長めのゲーム向き" },
+  normal: { label: "ふつう", detail: "バランス重視。迷ったらこれ" },
+  steep: { label: "急", detail: "改装するほど一気に跳ね上がる。短期決戦向き" },
+};
+
+/** 店舗レベルの上限(0=土地のみ 〜 5=最大レベル) */
+export const MAX_SHOP_LEVEL = 5;
 
 /**
  * 同じ色グループを独占している場合の飲み代倍率。
@@ -25,6 +46,8 @@ export function calcBuildCost(price: number): number {
   return Math.max(1, Math.round(price * 0.25));
 }
 
+export type RentTier = "land" | "lv1" | "lv2" | "lv3" | "lv4" | "max";
+
 /** 店舗レベル(0=土地のみ,1-4=Lv1-4,5=最大Lv)からレント算出用のtierを決める */
 export function tierFromLevel(level: number): RentTier {
   if (level <= 0) return "land";
@@ -35,8 +58,14 @@ export function tierFromLevel(level: number): RentTier {
   return "max";
 }
 
-export function calcPropertyRent(price: number, level: number, isMonopolyOwned: boolean): number {
-  const base = price * RENT_MULTIPLIER[tierFromLevel(level)];
+export function calcPropertyRent(
+  price: number,
+  level: number,
+  isMonopolyOwned: boolean,
+  growth: RentGrowth = DEFAULT_RENT_GROWTH,
+): number {
+  const capped = Math.min(Math.max(level, 0), MAX_SHOP_LEVEL);
+  const base = price * RENT_BASE_RATE * Math.pow(RENT_GROWTH_FACTOR[growth], capped);
   return Math.max(1, Math.round(base * (isMonopolyOwned ? MONOPOLY_RENT_MULTIPLIER : 1)));
 }
 
@@ -89,11 +118,16 @@ const RENT_TIER_ORDER: RentTier[] = ["land", "lv1", "lv2", "lv3", "lv4", "max"];
 /**
  * 物件の全レベルの賃料早見表を返す(PropertyDetailModal / PlayerDetailModal共通)。
  * @param isMonopolyOwned 独占時の1.5倍を反映した表にするかどうか
+ * @param growth 適用中の成長率設定
  */
-export function getPropertyRentBreakdown(price: number, isMonopolyOwned = false): RentBreakdownRow[] {
-  return RENT_TIER_ORDER.map((tier) => ({
+export function getPropertyRentBreakdown(
+  price: number,
+  isMonopolyOwned = false,
+  growth: RentGrowth = DEFAULT_RENT_GROWTH,
+): RentBreakdownRow[] {
+  return RENT_TIER_ORDER.map((tier, level) => ({
     tier,
     label: RENT_TIER_LABELS[tier],
-    amount: calcPropertyRent(price, RENT_TIER_ORDER.indexOf(tier), isMonopolyOwned),
+    amount: calcPropertyRent(price, level, isMonopolyOwned, growth),
   }));
 }

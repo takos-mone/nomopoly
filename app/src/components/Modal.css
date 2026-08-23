@@ -237,6 +237,34 @@
   width: 100%;
 }
 
+/* .drink-modal__panel > div の縦積みルールより詳細度を上げる(−/値/＋は横並びにしたい) */
+.drink-modal__panel > .drink-modal__exemption-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.drink-modal__exemption-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--noren-dark);
+  min-width: 60px;
+  text-align: center;
+}
+
+.drink-modal__exemption-slider {
+  width: 100%;
+  accent-color: var(--noren);
+}
+
+.drink-modal__exemption-preview {
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
 .drink-modal__empty {
   color: var(--ink-soft);
   font-size: 13px;
