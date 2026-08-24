@@ -3,10 +3,13 @@ import { pushLog, pushNotice } from "./drinkEngine";
 
 /**
  * 累計飲酒量の脱落ラインのデフォルト値(unit)。セットアップ画面で変更可能。
- * v3の飲み代引き下げに合わせて 80 → 50 に調整した(飲み代を下げたまま
- * 脱落ラインを据え置くと、1ゲームが間延びしてしまうため)。
+ *
+ * 「長い時間遊べるように」という要望で 50 → 200 にした。飲み代の式を
+ * 引き下げた(価格 × 0.3 × 成長率^レベル)ままラインを大きく取ることで、
+ * 1回の着地では脱落せず、周回を重ねて削られていく長期戦になる。
+ * 短く終わらせたい場合はセットアップ画面で小さい値を入れる。
  */
-export const DEFAULT_ELIMINATION_THRESHOLD = 50;
+export const DEFAULT_ELIMINATION_THRESHOLD = 200;
 
 function eliminatePlayer(state: GameState, playerId: number): GameState {
   const player = state.players.find((p) => p.id === playerId)!;

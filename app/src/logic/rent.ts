@@ -13,10 +13,10 @@ export const RENT_BASE_RATE = 0.3;
 export type RentGrowth = "gentle" | "normal" | "steep";
 
 /**
- * 等比の公比。脱落ライン(既定50 unit)を基準に、
- * 最高額の物件(価格27)を最大レベルまで育てたときの飲み代が
+ * 等比の公比。最高額の物件(価格27)を最大レベルまで育てたときの飲み代が
  * だいたい 25 / 36 / 62 unit に収まるよう選んでいる。
- * これ以上大きくすると、1回止まっただけで脱落する事故が増えて大味になる。
+ * 既定の脱落ライン200 unitに対して1回の着地では致命傷にならない範囲で、
+ * 改装が効いていると実感できる程度の差をつけるのが狙い。
  */
 export const RENT_GROWTH_FACTOR: Record<RentGrowth, number> = {
   gentle: 1.25,

@@ -1,3 +1,4 @@
+import { DEFAULT_ELIMINATION_THRESHOLD } from "../logic/elimination";
 import { Modal } from "./Modal";
 
 interface HowToPlayModalProps {
@@ -58,7 +59,7 @@ export function HowToPlayModal({ onClose }: HowToPlayModalProps) {
 
         <section>
           <h3>💀 脱落・勝利条件</h3>
-          <p>累計飲酒量が脱落ライン(セットアップ画面で設定可能、デフォルト80 unit)に達すると脱落し、所有物件はすべて銀行に返却される。生き残りが1人になった時点でゲーム終了。</p>
+          <p>累計飲酒量が脱落ライン(セットアップ画面で設定可能、デフォルト{DEFAULT_ELIMINATION_THRESHOLD} unit)に達すると脱落し、所有物件はすべて銀行に返却される。生き残りが1人になった時点でゲーム終了。</p>
         </section>
 
         <p className="howto-modal__footnote">※ 1 unit の実量は今日の飲み会で自由に決めてください。無理なく、ノンアルコールでも楽しめます。</p>

@@ -5,6 +5,7 @@ import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
 import { EventLogModal } from "./components/EventLog";
 import { GameOverModal } from "./components/GameOverModal";
 import { HowToPlayModal } from "./components/HowToPlayModal";
+import { Modal } from "./components/Modal";
 import { NoticeOverlay } from "./components/NoticeOverlay";
 import { PlayerDetailModal } from "./components/PlayerDetailModal";
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -26,11 +27,14 @@ function App() {
   const [showHowTo, setShowHowTo] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [showTradeComposer, setShowTradeComposer] = useState(false);
+  const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
   // 強制移動で「歩かせず」ワープさせたいプレイヤー。通知を閉じた瞬間にセットする。
   const [snapPlayerIds, setSnapPlayerIds] = useState<number[]>([]);
   const visualPositions = useTokenAnimation(state.players, state.squares.length, snapPlayerIds);
   const prevEliminatedCount = useRef(0);
   const prevTurnPlayer = useRef<number | null>(null);
+  // 「中断してホームに戻る」で setup に戻ったときだけ、保存を消さずに残すための目印。
+  const suspendedRef = useRef(false);
   // 手番が変わった瞬間だけ true。盤面のパネルをスライドイン/アウトさせる合図に使う。
   const [turnPhase, setTurnPhase] = useState<"in" | "idle">("idle");
 
@@ -78,13 +82,19 @@ function App() {
   }, [snapPlayerIds, visualPositions, state.players]);
 
   // リロードやタブの破棄でゲームが消えないよう、進行中は常に保存しておく。
-  // セットアップ画面に戻った(＝新しいゲームを始めた)時点で保存を破棄する。
+  // 終了したゲームや、新しいゲームを始めた時点の保存は破棄する
+  // (finished を残すと、次回ホーム画面で「中断中のゲームがあります」と誤って出てしまう)。
+  // 例外は「中断してホームに戻る」で、このときだけ保存を残して再開できるようにする。
   useEffect(() => {
-    if (state.phase === "setup") {
-      clearSavedGame();
-    } else {
+    if (state.phase === "playing") {
       saveGame(state);
+      return;
     }
+    if (state.phase === "setup" && suspendedRef.current) {
+      suspendedRef.current = false;
+      return;
+    }
+    clearSavedGame();
   }, [state]);
 
   if (state.phase === "setup") {
@@ -192,6 +202,13 @@ function App() {
           >
             🤝 交渉する
           </button>
+          <button
+            type="button"
+            className="secondary-button app-layout__log-button"
+            onClick={() => setShowSuspendConfirm(true)}
+          >
+            🏠 中断してホームに戻る
+          </button>
         </div>
       </div>
 
@@ -228,6 +245,34 @@ function App() {
         <TradeResponseModal state={state} dispatch={dispatch} />
       )}
       {state.phase === "finished" && <GameOverModal state={state} dispatch={dispatch} />}
+
+      {showSuspendConfirm && (
+        <Modal title="🏠 ゲームの中断" onClose={() => setShowSuspendConfirm(false)}>
+          <div className="suspend-modal">
+            <p>ゲームを中断しますか?</p>
+            <p className="suspend-modal__note">
+              ここまでの進行は保存されます。ホーム画面の「続きから再開する」でいつでも戻れます。
+            </p>
+            <div className="suspend-modal__actions">
+              <button
+                className="primary-button"
+                onClick={() => {
+                  // dispatch より先に保存しておく(この後 state は初期状態に戻るため)
+                  saveGame(state);
+                  suspendedRef.current = true;
+                  setShowSuspendConfirm(false);
+                  dispatch({ type: "RESET_GAME" });
+                }}
+              >
+                はい、中断する
+              </button>
+              <button className="secondary-button" onClick={() => setShowSuspendConfirm(false)}>
+                いいえ、続ける
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }
