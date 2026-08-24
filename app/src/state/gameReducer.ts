@@ -91,6 +91,7 @@ export function createInitialState(): GameState {
     pendingCardQueue: [],
     pendingCardName: null,
     pendingLandingResolution: false,
+    pendingCardMove: null,
     notices: [],
     pendingMoveSteps: null,
     eliminationThreshold: DEFAULT_ELIMINATION_THRESHOLD,
@@ -337,7 +338,13 @@ function advancePlayer(state: GameState, playerId: number, steps: number): GameS
     const remaining = steps - stepsToGo;
     const movedToGo = state.players.map((p) =>
       p.id === playerId
-        ? { ...p, position: GO_SQUARE_ID, exemptionUnits: p.exemptionUnits + GO_PASS_EXEMPTION }
+        ? {
+            ...p,
+            position: GO_SQUARE_ID,
+            exemptionUnits: p.exemptionUnits + GO_PASS_EXEMPTION,
+            // サイコロでの移動は必ず前進。戻るカードの直後でも向きを戻しておく
+            movingBackward: false,
+          }
         : p,
     );
     let next: GameState = {
@@ -364,7 +371,9 @@ function advancePlayer(state: GameState, playerId: number, steps: number): GameS
     ...state,
     pendingMoveSteps: null,
     players: state.players.map((p) =>
-      p.id === playerId ? { ...p, position: newPos, exemptionUnits: p.exemptionUnits + gain } : p,
+      p.id === playerId
+        ? { ...p, position: newPos, exemptionUnits: p.exemptionUnits + gain, movingBackward: false }
+        : p,
     ),
   };
   if (gain > 0) {
@@ -401,6 +410,24 @@ function calcRentFor(state: GameState, square: PropertySquare | ConvenienceSquar
  */
 const MAX_LANDING_CHAIN_DEPTH = 8;
 
+/**
+ * カードで予約された駒の移動を実際に反映する。
+ * カードの内容(と免除権などの通知)を見終わってから呼ぶことで、
+ * 「カードを見る → 駒が動く → 移動先の効果」の順に演出できる。
+ */
+function applyPendingCardMove(state: GameState): GameState {
+  const move = state.pendingCardMove;
+  if (!move) return state;
+  const moved: GameState = {
+    ...state,
+    pendingCardMove: null,
+    players: state.players.map((p) =>
+      p.id === move.playerId ? { ...p, position: move.to, movingBackward: move.backward } : p,
+    ),
+  };
+  return resolveLanding(moved);
+}
+
 function finalizeCardResolution(state: GameState, depth = 0): GameState {
   let next = state;
   if (next.pendingDrink || next.pendingChoice) return next;
@@ -434,11 +461,12 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     // セーブにはプレイヤーの進行状況だけを反映させる。
     // 着地・カードの演出イベントは再開時に蒸し返さないよう捨てる。
     case "RESUME_GAME":
-      return {
+      // 通知を捨てるため、カードの予約移動は消化できなくなる。ここで先に反映しておく。
+      return applyPendingCardMove({
         ...action.state,
         squares: createInitialState().squares,
         notices: [],
-          };
+      });
 
     case "DISMISS_NOTICE": {
       const [head, ...rest] = state.notices;
@@ -463,6 +491,11 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         return advancePlayer({ ...dismissed, pendingMoveSteps: null }, mover.id, dismissed.pendingMoveSteps);
       }
 
+      // カードによる移動も、カードを見終わってから駒を動かす
+      if (dismissed.pendingCardMove && rest.length === 0) {
+        return applyPendingCardMove(dismissed);
+      }
+
       return dismissed;
     }
 
@@ -481,6 +514,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         outgoingMultiplier: 1,
         taxiTickets: 0,
         previousPosition: 0,
+        movingBackward: false,
         eliminatedOrder: null,
       }));
       return {
@@ -956,6 +990,25 @@ function baseReducer(state: GameState, action: GameAction): GameState {
 }
 
 /** 全アクションの後に脱落・勝利判定を通す */
+/** 予約移動の取りこぼしを消化する回数の上限(移動先がまたカードマスだった場合の保険) */
+const MAX_CARD_MOVE_CHAIN = 8;
+
 export function gameReducer(state: GameState, action: GameAction): GameState {
-  return applyElimination(baseReducer(state, action));
+  let next = applyElimination(baseReducer(state, action));
+
+  // カードの予約移動は通常 DISMISS_NOTICE で消化するが、通知を1件も出さない
+  // 経路(カード効果を直接適用した場合など)では消化役がいない。
+  // 見せるべき通知が残っておらず、他の保留もない状態なら、ここで反映しておく。
+  let guard = 0;
+  while (
+    next.pendingCardMove &&
+    next.notices.length === 0 &&
+    !next.pendingDrink &&
+    !next.pendingChoice &&
+    next.phase === "playing" &&
+    guard++ < MAX_CARD_MOVE_CHAIN
+  ) {
+    next = applyElimination(applyPendingCardMove(next));
+  }
+  return next;
 }

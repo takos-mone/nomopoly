@@ -84,6 +84,13 @@ export interface Player {
   taxiTickets: number;
   /** 直前に止まっていたマス。「財布を落とした」で戻る先に使う */
   previousPosition: number;
+  /**
+   * 直近の移動が「盤面を戻る」向きだったか。駒のアニメーションの向きにだけ使う。
+   * 「寄り道(3マス戻る)」「財布を落とした」は戻る向きに歩かせないと、
+   * 3マス戻るだけのカードで盤面をほぼ一周してしまう。
+   * 省略時(古いセーブ)は前進として扱う。
+   */
+  movingBackward?: boolean;
   /** 何番目に脱落したか(1始まり)。未脱落は null。「脱落が遅い順」の順位付けに使う */
   eliminatedOrder: number | null;
 }
@@ -233,6 +240,12 @@ export interface GameState {
   /** 提案中の交渉。相手が承認/拒否するまで他の操作をブロックする */
   pendingTrade: PendingTrade | null;
   /** 現在処理中のカードの、まだ適用していない残り効果(1枚のカードが複数人に飲ませる場合の待ち行列) */
+  /**
+   * カードによる駒の移動。カードの内容を見せてから動かしたいので、
+   * 効果の適用時点では移動させず、通知を見終わった時点で反映する。
+   * (同じディスパッチで動かすと、サイコロで着地したマスを駒が素通りしてしまう)
+   */
+  pendingCardMove: { playerId: number; to: number; backward: boolean } | null;
   pendingCardQueue: CardEffect[];
   pendingCardName: string | null;
   /** カード効果で移動した後、着地マスの飲み代・購入・カード効果を連鎖解決する必要があるか */

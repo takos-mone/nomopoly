@@ -61,13 +61,22 @@ function movePlayerTo(
   to: number,
   forward: boolean,
   cardName: string,
+  /**
+   * 駒を歩かせる向き。既定では forward と同じだが、「直帰」だけは
+   * 免除権を自前で加算する都合で forward=false を渡しつつ、
+   * 見た目は前へ進ませたいので別に指定する。
+   */
+  travelForward: boolean = forward,
 ): GameState {
   const passedGo = forward && to < from;
   const gain = passedGo ? GO_PASS_EXEMPTION : 0;
+  // ここでは position を変えず、移動を予約するだけにする。
+  // カードの内容を見せる前に駒が動いてしまうと、何が起きたのか分からないため。
   const moved: GameState = {
     ...state,
+    pendingCardMove: { playerId, to, backward: !travelForward },
     players: state.players.map((p) =>
-      p.id === playerId ? { ...p, position: to, exemptionUnits: p.exemptionUnits + gain } : p,
+      p.id === playerId ? { ...p, exemptionUnits: p.exemptionUnits + gain } : p,
     ),
   };
   if (gain === 0) return moved;
@@ -355,7 +364,7 @@ function applySingleEffect(
       const newPos = (from + effect.steps + boardLength) % boardLength;
       const moved = movePlayerTo(state, currentPlayerId, from, newPos, effect.steps > 0, cardName);
       const log = pushLog(moved.log, moved.turn, currentPlayerId, `「${cardName}」で${state.squares[newPos].name}へ移動。`);
-      return { state: { ...moved, log, pendingLandingResolution: true }, blocked: false };
+      return { state: { ...moved, log }, blocked: false };
     }
 
     case "moveToNearestOwned": {
@@ -369,7 +378,7 @@ function applySingleEffect(
       const target = owned.reduce((best, sq) => (distance(sq.id) < distance(best.id) ? sq : best));
       const moved = movePlayerTo(state, currentPlayerId, from, target.id, true, cardName);
       const log = pushLog(moved.log, moved.turn, currentPlayerId, `「${cardName}」で最も近い自分の物件「${target.name}」へワープ。`);
-      return { state: { ...moved, log, pendingLandingResolution: true }, blocked: false };
+      return { state: { ...moved, log }, blocked: false };
     }
 
     case "moveToNearestConvenience": {
@@ -383,7 +392,7 @@ function applySingleEffect(
       const target = stores.reduce((best, sq) => (distance(sq.id) < distance(best.id) ? sq : best));
       const moved = movePlayerTo(state, currentPlayerId, from, target.id, true, cardName);
       const log = pushLog(moved.log, moved.turn, currentPlayerId, `「${cardName}」で「${target.name}」まで一気に移動。`);
-      return { state: { ...moved, log, pendingLandingResolution: true }, blocked: false };
+      return { state: { ...moved, log }, blocked: false };
     }
 
     case "moveToPreviousSquare": {
@@ -394,18 +403,19 @@ function applySingleEffect(
       // 戻る移動なのでGO通過扱いにはしない
       const moved = movePlayerTo(state, currentPlayerId, currentPlayer.position, back, false, cardName);
       const log = pushLog(moved.log, moved.turn, currentPlayerId, `「${cardName}」で前回の「${state.squares[back].name}」へ戻った。`);
-      return { state: { ...moved, log, pendingLandingResolution: true }, blocked: false };
+      return { state: { ...moved, log }, blocked: false };
     }
 
     case "moveToGo": {
-      const moved = movePlayerTo(state, currentPlayerId, currentPlayer.position, GO_SQUARE_ID, false, cardName);
+      // 「GOまで進む」カードなので、見た目は前進させる(免除権は下で自前に加算する)
+      const moved = movePlayerTo(state, currentPlayerId, currentPlayer.position, GO_SQUARE_ID, false, cardName, true);
       // 1周扱いなので、跨いだかどうかに関係なく免除権を与える
       const players = moved.players.map((p) =>
         p.id === currentPlayerId ? { ...p, exemptionUnits: p.exemptionUnits + GO_PASS_EXEMPTION } : p,
       );
       const log = pushLog(moved.log, moved.turn, currentPlayerId, `「${cardName}」でGO(自宅)へ直帰。免除権+${GO_PASS_EXEMPTION}。`);
       const gained = pushGain(
-        { ...moved, players, log, pendingLandingResolution: true },
+        { ...moved, players, log },
         currentPlayerId,
         "🏠",
         `免除権 +${GO_PASS_EXEMPTION} unit`,
