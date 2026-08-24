@@ -261,7 +261,7 @@ export const COMMUNITY_CHEST_CARDS: CardDef[] = [
   {
     id: "cc4",
     name: "救済",
-    description: "最も累計飲酒量が多いプレイヤーの記録を3 unit減らす",
+    description: "最も累計飲酒量が多いプレイヤー全員の記録を3 unit減らす",
     effects: [{ kind: "reduceRichestDrinkTotal", amount: 3 }],
     weight: 2,
   },
@@ -336,7 +336,7 @@ export const COMMUNITY_CHEST_CARDS: CardDef[] = [
   {
     id: "cc14",
     name: "二日酔い注意報",
-    description: "最も累計飲酒量が多いプレイヤーの記録を5 unit減らす",
+    description: "最も累計飲酒量が多いプレイヤー全員の記録を5 unit減らす",
     effects: [{ kind: "reduceRichestDrinkTotal", amount: 5 }],
   },
 ];

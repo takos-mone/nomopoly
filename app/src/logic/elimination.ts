@@ -69,7 +69,20 @@ export function applyElimination(state: GameState): GameState {
   const finished =
     next.endCondition === "firstElimination" ? someoneEliminated : alive.length <= 1;
   if (finished) {
-    next = { ...next, phase: "finished" };
+    // ゲームが終わった時点で、やりかけの操作はすべて破棄する。
+    // 「全員が飲む」系のカードは1人ずつ順に確認していくため、その途中で
+    // 決着がつくと残りの飲み確認や選択待ちが宙に浮き、結果画面の裏に
+    // モーダルが残ってしまう。終わったあとに飲ませる意味もないので捨てる。
+    next = {
+      ...next,
+      phase: "finished",
+      pendingDrink: null,
+      pendingCardQueue: [],
+      pendingCardName: null,
+      pendingChoice: null,
+      pendingPurchase: null,
+      pendingTrade: null,
+    };
   }
   return next;
 }

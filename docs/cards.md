@@ -51,7 +51,7 @@
 | 臨時ボーナス | 全員に免除権+2 | 2 | 8.0% | `allExemption` |
 | 乾杯! | 全員が2 unit飲む | 2 | 8.0% | `allDrink` |
 | 大宴会 | 全員が4 unit飲む | 1 | 4.0% | `allDrink` |
-| 救済 | 最も累計飲酒量が多いプレイヤーの記録を3 unit減らす | 2 | 8.0% | `reduceRichestDrinkTotal` |
+| 救済 | 最も累計飲酒量が多いプレイヤー全員の記録を3 unit減らす | 2 | 8.0% | `reduceRichestDrinkTotal` |
 | 飲み放題 | 全員に免除権+1 | 2 | 8.0% | `allExemption` |
 | 誕生日 | 誕生日が最も近い人を選ぶ。その人は他全員から免除権を2ずつもらう代わりに4 unit飲む | 2 | 8.0% | `birthdayCollect` |
 | 多数決 | 全員で多数決を取って1人を選ぶ。選ばれた人が3 unit飲む | 2 | 8.0% | `voteDrink` |
@@ -61,7 +61,7 @@
 | 飲み仲間 | 自分とランダムな1人がそれぞれ1 unit飲む | 2 | 8.0% | `drink, drink` |
 | 街のお祭り | ランダムな相手とジャンケン。負けた方が2 unit飲む | 2 | 8.0% | `duel` |
 | 割り勘 | 全員が2 unit飲み、全員の免除権+1 | 2 | 8.0% | `allDrink, allExemption` |
-| 二日酔い注意報 | 最も累計飲酒量が多いプレイヤーの記録を5 unit減らす | 1 | 4.0% | `reduceRichestDrinkTotal` |
+| 二日酔い注意報 | 最も累計飲酒量が多いプレイヤー全員の記録を5 unit減らす | 1 | 4.0% | `reduceRichestDrinkTotal` |
 
 ## 4. 対象の決め方(`CardTarget`)
 
