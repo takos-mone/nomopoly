@@ -263,5 +263,14 @@ export interface GameState {
   endCondition: EndCondition;
   /** 改装レベルごとに飲み代がどれだけ跳ね上がるか(セットアップの詳細設定で選択) */
   rentGrowth: RentGrowth;
+  /** 物件を最初に買った人が自分で名前を付けられるモード(セットアップの詳細設定で選択) */
+  customNaming: boolean;
+  /**
+   * プレイヤーが付けた物件名。squares の name は再開時にコード側の定義で作り直すため、
+   * 名前はこちらを正として持ち、盤面に上書きして反映する。
+   */
+  customNames: Record<number, string>;
+  /** 命名待ち。買った直後に名前を聞いている間だけ入る */
+  pendingNaming: { squareId: number; playerId: number } | null;
   phase: "setup" | "playing" | "finished";
 }

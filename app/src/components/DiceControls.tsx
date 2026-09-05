@@ -3,6 +3,7 @@ import { playDiceLand, playDiceTick, playPurchase } from "../logic/sound";
 import { JAIL_ESCAPE_COST, type GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Dice } from "./Dice";
+import type { DiceView } from "./three/Dice3D";
 import { Illustration } from "./Illustration";
 
 interface DiceControlsProps {
@@ -10,13 +11,15 @@ interface DiceControlsProps {
   dispatch: React.Dispatch<GameAction>;
   /** 手番が始まった直後は "in"。スライドインさせるために使う */
   turnPhase: "in" | "idle";
+  /** 3Dのサイコロと同期させるための通知 */
+  onDiceViewChange: (view: DiceView) => void;
 }
 
 function randomFace(): number {
   return 1 + Math.floor(Math.random() * 6);
 }
 
-export function DiceControls({ state, dispatch, turnPhase }: DiceControlsProps) {
+export function DiceControls({ state, dispatch, turnPhase, onDiceViewChange }: DiceControlsProps) {
   const current = state.players[state.currentPlayerIndex];
   const hasRolledThisTurn = state.lastDice !== null;
   const [rolling, setRolling] = useState(false);
@@ -37,6 +40,13 @@ export function DiceControls({ state, dispatch, turnPhase }: DiceControlsProps) 
   useEffect(() => {
     if (!hasRolledThisTurn) setRolling(false);
   }, [hasRolledThisTurn]);
+
+  // 3D側は出目を持たないので、ここで確定した内容をそのまま渡す。
+  // このパネルは通知が出ている間などに外されるため、消えるときは必ず片付ける。
+  useEffect(() => {
+    onDiceViewChange({ rolling, result: rolledDice });
+    return () => onDiceViewChange({ rolling: false, result: null });
+  }, [rolling, rolledDice, onDiceViewChange]);
 
   useEffect(() => {
     if (!state.pendingPurchase) setConfirmingPurchase(false);

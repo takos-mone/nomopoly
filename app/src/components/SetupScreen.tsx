@@ -16,6 +16,7 @@ interface SetupScreenProps {
     eliminationThreshold: number,
     endCondition: EndCondition,
     rentGrowth: RentGrowth,
+    customNaming: boolean,
   ) => void;
   onResume: (state: GameState) => void;
 }
@@ -44,6 +45,7 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   const [thresholdInput, setThresholdInput] = useState("");
   const [endCondition, setEndCondition] = useState<EndCondition>("lastSurvivor");
   const [rentGrowth, setRentGrowth] = useState<RentGrowth>(DEFAULT_RENT_GROWTH);
+  const [customNaming, setCustomNaming] = useState(false);
   // マウント時に一度だけ読み込む。破棄したら再表示しないので state で保持する。
   const [savedGame, setSavedGame] = useState(loadGame);
 
@@ -62,17 +64,14 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
 
   return (
     <div className="setup-screen">
-      {/* 入口ページの顔として、ロゴ文字入りのバナーをそのまま見出しに使う。
-          画像に「NOMOPOLY」の文字が入っているので、h1はスクリーンリーダー向けに残しつつ視覚的には隠す。 */}
-      <img
-        className="setup-banner"
-        src={`${import.meta.env.BASE_URL}icons/banner.png`}
-        alt="飲もポリー"
-        width={1672}
-        height={941}
-      />
-      <h1 className="setup-screen__sr-title">飲もポリー</h1>
-      <p className="setup-subtitle">モノポリー × 飲みゲー</p>
+      <div className="world-hero">
+        <h1 className="world-logo">
+          <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt="飲もポリー" />
+          <span>NOMOPOLY 3D</span>
+        </h1>
+        <p>サイコロひとつで、今夜の行き先へ。</p>
+        <span className="world-badge">3Dすごろく · 2〜6人 · 同じ端末で遊ぶ</span>
+      </div>
       <p className="setup-caution">
         ※ 1 unit の実量は今日の飲み会で自由に決めてください。無理なく、ノンアルコールでも楽しめます。
       </p>
@@ -196,11 +195,29 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
           例) 価格10 unitの土地: 土地のみ {calcPropertyRent(10, 0, false, rentGrowth)}u → Lv.3{" "}
           {calcPropertyRent(10, 3, false, rentGrowth)}u → 最大 {calcPropertyRent(10, 5, false, rentGrowth)}u
         </p>
+
+      </div>
+
+      <div className="setup-endcondition">
+        <span className="setup-endcondition__label">店の名前</span>
+        <label
+          className={
+            customNaming
+              ? "setup-endcondition__option setup-endcondition__option--selected"
+              : "setup-endcondition__option"
+          }
+        >
+          <input type="checkbox" checked={customNaming} onChange={(e) => setCustomNaming(e.target.checked)} />
+          <span>
+            <strong>買った人が名前を付ける</strong>
+            <small>初めてその物件を買った人が、自分で店名を決められます。区域の色分けと価格はそのままです。</small>
+          </span>
+        </label>
       </div>
 
       <button
         className="primary-button"
-        onClick={() => onStart(names.slice(0, count), resolvedThreshold, endCondition, rentGrowth)}
+        onClick={() => onStart(names.slice(0, count), resolvedThreshold, endCondition, rentGrowth, customNaming)}
       >
         ゲーム開始
       </button>

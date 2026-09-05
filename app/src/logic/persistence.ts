@@ -7,7 +7,7 @@
  */
 import type { GameState } from "../types";
 
-const SAVE_STORAGE_KEY = "nomopoly-savegame";
+const SAVE_STORAGE_KEY = "nomopoly-3d-savegame";
 /**
  * 保存形式のバージョン。GameStateの構造を変えたら上げる(古いセーブは読み捨てる)。
  * v2: 通知キュー(notices)の追加、GOマスの改称と免除権ルール変更に伴い v1 を破棄。
@@ -16,8 +16,9 @@ const SAVE_STORAGE_KEY = "nomopoly-savegame";
  * v5: pendingTargetChoice を pendingChoice に一般化、Player.previousPosition を追加。
  * v6: GameState.pendingTrade(交渉)を追加。
  * v7: GameState.rentGrowth を追加、飲み代の式と既定の脱落ラインを変更。
+ * v8: 命名モード(customNaming/customNames/pendingNaming)を追加、飲み代収入を同額に変更。
  */
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 8;
 
 interface SavePayload {
   version: number;

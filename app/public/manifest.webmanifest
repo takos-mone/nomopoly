@@ -1,7 +1,7 @@
 {
-  "name": "飲もポリー",
+  "name": "飲もポリー 3D",
   "short_name": "飲もポリー",
-  "description": "モノポリー×飲みゲー ボードゲームアプリ",
+  "description": "飲み屋街をめぐる3Dすごろくゲーム",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

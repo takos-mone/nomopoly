@@ -1,0 +1,22 @@
+{
+  "source": "takos-mone/nomopoly@cde263a34fac26edd71ef85eb306b8fc2482b504",
+  "files": {
+    "src/types.ts": "cfbc5f60b5f179c4146aa52c5952178abe29389bbacec224f092d25522cbca7b",
+    "src/state/gameReducer.ts": "0a945340e3af864360e5ef2955706e57576af461a2b02c23b2351f389b655eac",
+    "src/data/playerColors.ts": "4b78b89fe9a6e20c21819b0eb1ec5ccbcb356b9abb2af66ed15939f42671a5fd",
+    "src/data/cards.ts": "b2ce2d45cfb0b2df12baaea6564938c6be5eccd925ab806b8844109e0334d85e",
+    "src/data/board.ts": "30a6c4742f9959bc473e0d43cace74b68a78a151dd7c201dceb2c89aa140cc2b",
+    "src/logic/elimination.ts": "c5af2a1fef3c49dc688b44f65d8e8abf20e710435cf9b03a57a21d4b81e42f4d",
+    "src/logic/rent.ts": "7d3f169516ad78eee5c78e48fbaaafa5dc8c2eca165fa2bf24b8b4b198ad6ad2",
+    "src/logic/drinkEngine.ts": "68689a04b456d96447a3bb78e841bf82b73f70ca26504aa111df1599c60a0323",
+    "src/logic/layout.ts": "64c598c24e3b466d09499f8bc6ce53a70467f2d10b8b22ff6be1dffe31f41f53",
+    "src/logic/squareInfo.ts": "2993c8e583d12e23e0049caffdfe9ed6be39d2b62536cbe29e5d2a21e3a46fbc",
+    "src/logic/cardEffects.ts": "8167c12837b4aa87e48c78047ce60be417654993fe974299035c469107bf5e4a"
+  },
+  "note": "元コードからの差分は、意図して変えたルールだけに限る。変更するときは tests/game.test.ts の 'rules changed for the 3D product' に動作テストを足してから、この基準を更新する。",
+  "changes": [
+    "飲み代収入を半額から同額に変更(grantRentIncome)",
+    "命名モード: 最初に買った人が物件名を決められる(customNaming / customNames / SET_SQUARE_NAME)",
+    "自己破産: 自分から降りると所有物件が更地に戻る(DECLARE_BANKRUPTCY / bankruptPlayer)"
+  ]
+}

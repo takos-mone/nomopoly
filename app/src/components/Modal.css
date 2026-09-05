@@ -624,3 +624,50 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/*
+ * 飲みの請求は「不利なことが起きた」瞬間なので、
+ * 出現時に一度だけ短く突き上げて衝撃を伝える(揺れは減衰させて尾を引かせない)。
+ */
+.drink-modal {
+  animation: drink-jolt 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.drink-modal__headline {
+  animation: drink-headline 0.5s 0.06s ease-out both;
+}
+@keyframes drink-jolt {
+  0% { transform: scale(1.06) translateY(-10px); }
+  30% { transform: scale(0.985) translateY(4px); }
+  48% { transform: translateX(-7px); }
+  62% { transform: translateX(6px); }
+  76% { transform: translateX(-3px); }
+  100% { transform: none; }
+}
+@keyframes drink-headline {
+  0% { opacity: 0; transform: scale(1.14); color: var(--noren); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drink-modal,
+  .drink-modal__headline { animation: none; }
+}
+
+/* 命名モード。買った直後に店名を決めてもらう */
+.naming-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.naming-modal__lead { margin: 0; font-size: 14px; }
+.naming-modal__lead strong { color: var(--noren); }
+.naming-modal__note { margin: 0; font-size: 12px; color: var(--ink-soft); }
+.naming-modal__input {
+  width: 100%;
+  padding: 12px 14px;
+  font: 700 16px var(--sans);
+  color: var(--ink);
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+}
+.naming-modal__actions { display: flex; flex-direction: column; gap: 8px; }

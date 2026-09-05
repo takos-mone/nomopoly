@@ -404,3 +404,49 @@
     opacity: 1;
   }
 }
+
+/*
+ * 状況ごとの演出。
+ * 単に出す/消すのではなく、予備動作 → 行き過ぎ → 揺り戻しの順で動かして
+ * 「起きたこと」の性質(祝う/痛い)が動きだけで伝わるようにする。
+ */
+
+/* 取得・獲得: 金色の光がカードを一度なめてから収まる */
+.notice-card--gain {
+  position: relative;
+  overflow: hidden;
+  animation: notice-gain-pop 0.52s cubic-bezier(0.18, 1.28, 0.32, 1);
+}
+.notice-card--gain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 34%, #ffe9b866 46%, #fff8e3cc 52%, #ffe9b866 58%, transparent 70%);
+  transform: translateX(-120%);
+  animation: notice-gain-sweep 0.85s 0.14s ease-out;
+}
+@keyframes notice-gain-pop {
+  0% { transform: scale(0.82) translateY(14px); opacity: 0; }
+  55% { transform: scale(1.045) translateY(0); opacity: 1; }
+  100% { transform: scale(1) translateY(0); }
+}
+@keyframes notice-gain-sweep {
+  to { transform: translateX(120%); }
+}
+
+/* 脱落: 一度沈み込んでから重く落ちる */
+.notice-card--elimination {
+  animation: notice-drop 0.5s cubic-bezier(0.3, 0.9, 0.4, 1.08);
+}
+@keyframes notice-drop {
+  0% { transform: translateY(-26px) scale(1.06); opacity: 0; }
+  60% { transform: translateY(6px) scale(0.985); opacity: 1; }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice-card--gain,
+  .notice-card--elimination { animation: none; }
+  .notice-card--gain::after { display: none; }
+}

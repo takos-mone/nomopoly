@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
-import { Board } from "./components/Board";
+import { GameBoard as Board } from "./components/three/GameBoard";
 import { DiceControls } from "./components/DiceControls";
 import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
 import { EventLogModal } from "./components/EventLog";
@@ -11,13 +11,19 @@ import { PlayerDetailModal } from "./components/PlayerDetailModal";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { PropertyDetailModal } from "./components/PropertyDetailModal";
 import { SetupScreen } from "./components/SetupScreen";
+import { SquareNamingModal } from "./components/SquareNamingModal";
 import { TargetChoiceModal } from "./components/TargetChoiceModal";
 import { TradeComposerModal, TradeResponseModal } from "./components/TradeModal";
 import { useTokenAnimation } from "./hooks/useTokenAnimation";
 import { clearSavedGame, saveGame } from "./logic/persistence";
 import { isMuted, playClick, playElimination, playTurnStart, setMuted } from "./logic/sound";
 import { createInitialState, gameReducer } from "./state/gameReducer";
+import type { DiceView } from "./components/three/Dice3D";
 import "./App.css";
+import "./world.css";
+
+/** 駒が止まってからポップアップを出すまでの「ため」 */
+const LANDING_PAUSE_MS = 700;
 
 function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
@@ -28,6 +34,7 @@ function App() {
   const [showLog, setShowLog] = useState(false);
   const [showTradeComposer, setShowTradeComposer] = useState(false);
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [showBankruptConfirm, setShowBankruptConfirm] = useState(false);
   // 強制移動で「歩かせず」ワープさせたいプレイヤー。通知を閉じた瞬間にセットする。
   const [snapPlayerIds, setSnapPlayerIds] = useState<number[]>([]);
   const visualPositions = useTokenAnimation(state.players, state.squares.length, snapPlayerIds);
@@ -37,6 +44,8 @@ function App() {
   const suspendedRef = useRef(false);
   // 手番が変わった瞬間だけ true。盤面のパネルをスライドイン/アウトさせる合図に使う。
   const [turnPhase, setTurnPhase] = useState<"in" | "idle">("idle");
+  // 3Dのサイコロに渡す表示状態。出目を決めているのは DiceControls 側。
+  const [diceView, setDiceView] = useState<DiceView>({ rolling: false, result: null });
 
   useEffect(() => {
     const eliminatedCount = state.players.filter((p) => p.eliminated).length;
@@ -81,6 +90,27 @@ function App() {
     if (arrived) setSnapPlayerIds([]);
   }, [snapPlayerIds, visualPositions, state.players]);
 
+  // 駒がまだ目的地までホップ移動中かどうか。移動アニメーションが終わるまで、
+  // 飲み代・カード等の自動発生ポップアップの表示を待たせる。
+  const isAnimating = state.players.some((p) => (visualPositions[p.id] ?? p.position) !== p.position);
+
+  // 着地した瞬間にポップアップが出ると、どのマスに止まったのかを見る間がない。
+  // 駒が止まってから少し「ため」を作り、盤面を認識させてから通知を出す。
+  const [landingPause, setLandingPause] = useState(false);
+  const wasAnimating = useRef(false);
+  useEffect(() => {
+    if (isAnimating) {
+      wasAnimating.current = true;
+      return;
+    }
+    if (!wasAnimating.current) return;
+    wasAnimating.current = false;
+    setLandingPause(true);
+    const timer = setTimeout(() => setLandingPause(false), LANDING_PAUSE_MS);
+    return () => clearTimeout(timer);
+  }, [isAnimating]);
+  const busy = isAnimating || landingPause;
+
   // リロードやタブの破棄でゲームが消えないよう、進行中は常に保存しておく。
   // 終了したゲームや、新しいゲームを始めた時点の保存は破棄する
   // (finished を残すと、次回ホーム画面で「中断中のゲームがあります」と誤って出てしまう)。
@@ -100,8 +130,8 @@ function App() {
   if (state.phase === "setup") {
     return (
       <SetupScreen
-        onStart={(names, eliminationThreshold, endCondition, rentGrowth) =>
-          dispatch({ type: "START_GAME", names, eliminationThreshold, endCondition, rentGrowth })
+        onStart={(names, eliminationThreshold, endCondition, rentGrowth, customNaming) =>
+          dispatch({ type: "START_GAME", names, eliminationThreshold, endCondition, rentGrowth, customNaming })
         }
         onResume={(saved) => dispatch({ type: "RESUME_GAME", state: saved })}
       />
@@ -112,19 +142,15 @@ function App() {
   const selectedPlayer =
     selectedPlayerId !== null ? state.players.find((p) => p.id === selectedPlayerId) ?? null : null;
 
-  // 駒がまだ目的地までホップ移動中かどうか。移動アニメーションが終わるまで、
-  // 飲み代・カード等の自動発生ポップアップの表示を待たせる。
-  const isAnimating = state.players.some((p) => (visualPositions[p.id] ?? p.position) !== p.position);
-
-  // 通知は駒の移動が終わってから、先頭の1件だけを出す。
-  const activeNotice = !isAnimating ? state.notices[0] ?? null : null;
+  // 通知は駒の移動と着地のためが終わってから、先頭の1件だけを出す。
+  const activeNotice = !busy && !state.pendingNaming ? state.notices[0] ?? null : null;
   // 通知を消化しきるまで、飲み代確認やサイコロなどの操作は出さない(表示順の破綻を防ぐ)
   const noticesBlocking = state.notices.length > 0;
 
   // 交渉ボタンを出せる条件。自分のターン中、他の保留状態(飲み確認・選択・購入確認・
   // 交渉中そのもの)が何もないとき、かつ交渉相手になれる生存者がいるとき。
   const canOpenTrade =
-    !isAnimating &&
+    !busy &&
     !noticesBlocking &&
     !state.pendingDrink &&
     !state.pendingChoice &&
@@ -144,8 +170,11 @@ function App() {
   return (
     <>
       <header className="app-header">
-        <h1>飲もポリー</h1>
-        <span className="app-header__subtitle">モノポリー × 飲みゲー</span>
+        <h1 className="app-header__logo">
+          <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt="飲もポリー" />
+          <small>3D</small>
+        </h1>
+        <span className="app-header__subtitle">街をめぐる、夜がはじまる。</span>
         <div className="app-header__buttons">
           <button
             type="button"
@@ -182,9 +211,11 @@ function App() {
           <Board
             state={state}
             onSelectSquare={setSelectedSquareId}
-            visualPositions={visualPositions}            overlay={
-              !isAnimating && !noticesBlocking && !state.pendingDrink && !state.pendingChoice && !state.pendingTrade ? (
-                <DiceControls state={state} dispatch={dispatch} turnPhase={turnPhase} />
+            visualPositions={visualPositions}
+            diceView={diceView}
+            overlay={
+              !busy && !noticesBlocking && !state.pendingDrink && !state.pendingChoice && !state.pendingTrade ? (
+                <DiceControls state={state} dispatch={dispatch} turnPhase={turnPhase} onDiceViewChange={setDiceView} />
               ) : undefined
             }
           />
@@ -201,6 +232,13 @@ function App() {
             onClick={() => setShowTradeComposer(true)}
           >
             🤝 交渉する
+          </button>
+          <button
+            type="button"
+            className="secondary-button app-layout__log-button"
+            onClick={() => setShowBankruptConfirm(true)}
+          >
+            🏳️ 自己破産(降参)する
           </button>
           <button
             type="button"
@@ -235,16 +273,42 @@ function App() {
       )}
 
       {activeNotice && <NoticeOverlay notice={activeNotice} state={state} onDismiss={dismissNotice} />}
-      {!isAnimating && !noticesBlocking && state.pendingChoice && (
+      {!busy && !noticesBlocking && state.pendingChoice && (
         <TargetChoiceModal state={state} dispatch={dispatch} />
       )}
-      {!isAnimating && !noticesBlocking && state.pendingDrink && (
+      {!busy && !noticesBlocking && state.pendingDrink && (
         <DrinkResolutionModal state={state} dispatch={dispatch} />
       )}
-      {!isAnimating && !noticesBlocking && state.pendingTrade && (
+      {!busy && !noticesBlocking && state.pendingTrade && (
         <TradeResponseModal state={state} dispatch={dispatch} />
       )}
+      {state.pendingNaming && <SquareNamingModal state={state} dispatch={dispatch} />}
       {state.phase === "finished" && <GameOverModal state={state} dispatch={dispatch} />}
+
+      {showBankruptConfirm && (
+        <Modal title="🏳️ 自己破産" onClose={() => setShowBankruptConfirm(false)}>
+          <div className="suspend-modal">
+            <p>{state.players[state.currentPlayerIndex]?.name}は自己破産して降りますか?</p>
+            <p className="suspend-modal__note">
+              持っている物件はすべて更地に戻り(建物も名前もなくなります)、以降の手番は回ってきません。取り消せません。
+            </p>
+            <div className="suspend-modal__actions">
+              <button
+                className="primary-button"
+                onClick={() => {
+                  setShowBankruptConfirm(false);
+                  dispatch({ type: "DECLARE_BANKRUPTCY", playerId: state.players[state.currentPlayerIndex].id });
+                }}
+              >
+                はい、降ります
+              </button>
+              <button className="secondary-button" onClick={() => setShowBankruptConfirm(false)}>
+                いいえ、続ける
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showSuspendConfirm && (
         <Modal title="🏠 ゲームの中断" onClose={() => setShowSuspendConfirm(false)}>

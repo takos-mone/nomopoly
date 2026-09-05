@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-single
 dist-ssr
 *.local
 
@@ -22,3 +23,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Browser QA
+/test-results/
+/playwright-report/

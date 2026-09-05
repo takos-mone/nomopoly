@@ -1,0 +1,105 @@
+/*
+ * 3Dプロダクト固有の調整のみを置く。
+ * 配色・タイポグラフィは index.css の飲もポリー既存トークン
+ * (クリーム地 --paper / 黒罫線 --line / 緋色 --noren / 金 --gold)をそのまま使う。
+ * 以前はここで :root を緑・ティールに上書きしていたため旧版とデザインが乖離していた。
+ */
+
+/* --- レイアウト(3Dビューは横に広いので上限を広げる) --- */
+.app-header { max-width: 1440px; width: 100%; margin: auto; }
+/* ロゴは旧プロダクトの看板画像そのもの。文字を描き足さず、黒縁だけで盤面と質感を合わせる。 */
+.app-header__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+.app-header__logo img {
+  display: block;
+  height: 64px;
+  width: auto;
+  border: 3px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 3px 0 var(--line);
+}
+.app-header__logo small {
+  font: 800 11px var(--sans);
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: var(--line);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+.app-layout { max-width: 1440px; width: 100%; padding: 16px 24px 32px; gap: 24px; }
+.app-layout__board { max-width: none; flex: 1 1 640px; }
+.app-layout__sidebar { flex: 0 1 300px; }
+
+/* --- タイトル画面 --- */
+.setup-screen {
+  border: 3px solid var(--line);
+  border-radius: 26px;
+  box-shadow: inset 0 0 0 3px var(--gold), var(--shadow-strong);
+  margin: 28px auto;
+}
+.world-hero { padding: 0 0 20px; position: relative; text-align: center; }
+.world-logo {
+  /* カード上端いっぱいに敷いて「店の看板」に見せる */
+  display: block;
+  margin: -28px -24px 6px;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+.world-logo img {
+  display: block;
+  width: 100%;
+  border-radius: 16px 16px 0 0;
+  border-bottom: 3px solid var(--line);
+}
+.world-logo span {
+  display: block;
+  font: 700 11px var(--sans);
+  letter-spacing: 0.32em;
+  color: var(--ink-soft);
+  margin-top: 12px;
+}
+.world-hero p { color: var(--ink-soft); font-size: 13px; }
+.world-badge {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 7px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border: 2px solid var(--line);
+  border-radius: 20px;
+  background: var(--paper-warm);
+  color: var(--ink);
+}
+
+.primary-button { border-radius: 12px; }
+button:focus-visible, summary:focus-visible { outline: 3px solid var(--gold-dark); outline-offset: 3px; }
+
+@media (max-width: 700px) {
+  .app-layout { padding: 12px; gap: 14px; }
+  .app-layout__sidebar { flex-basis: 100%; width: 100%; }
+  .setup-screen { width: calc(100% - 24px); margin: 12px; padding: 22px 18px; }
+  /* カード側の余白が変わるので、看板の食い込み量も合わせる */
+  .world-logo { margin: -22px -18px 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* 押す場所は動かさずに次の操作だけ光らせる(旧版で拡縮アニメが誤タップを招いたため)。 */
+.dice-stop-button { animation: world-action-glow 1.2s ease-in-out infinite; }
+@keyframes world-action-glow { 50% { box-shadow: 0 0 0 5px #e3a03855; } }
+@media (prefers-reduced-motion: reduce) { .dice-stop-button { animation: none; } }

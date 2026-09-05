@@ -1,3 +1,4 @@
+import { BOARD } from "../data/board";
 import type { GameState } from "../types";
 import { pushLog, pushNotice } from "./drinkEngine";
 
@@ -11,7 +12,13 @@ import { pushLog, pushNotice } from "./drinkEngine";
  */
 export const DEFAULT_ELIMINATION_THRESHOLD = 200;
 
-function eliminatePlayer(state: GameState, playerId: number): GameState {
+/**
+ * プレイヤーを退場させ、その人の物件を更地に戻す。
+ * 所有・店舗レベル・抵当だけでなく、その人が付けた物件名も消して初期状態に戻す。
+ *
+ * @param reason 累計飲酒量による脱落か、自分から降りた自己破産か。文言だけが変わる。
+ */
+function eliminatePlayer(state: GameState, playerId: number, reason: "threshold" | "bankruptcy"): GameState {
   const player = state.players.find((p) => p.id === playerId)!;
   // 何番目の脱落かを記録しておく(「脱落が遅い順」の順位付けに使う)
   const order = state.players.filter((p) => p.eliminated).length + 1;
@@ -25,27 +32,45 @@ function eliminatePlayer(state: GameState, playerId: number): GameState {
   const ownership = { ...state.ownership };
   const shopLevel = { ...state.shopLevel };
   const mortgages = { ...state.mortgages };
+  const customNames = { ...state.customNames };
   for (const id of ownedSquareIds) {
     delete ownership[id];
     delete shopLevel[id];
     delete mortgages[id];
+    delete customNames[id];
   }
+  // 名前を消したマスは元の名前に戻す
+  const squares = ownedSquareIds.length
+    ? state.squares.map((sq) => (ownedSquareIds.includes(sq.id) ? { ...sq, name: BOARD[sq.id].name } : sq))
+    : state.squares;
 
+  const bankrupt = reason === "bankruptcy";
   const log = pushLog(
     state.log,
     state.turn,
     playerId,
-    `${player.name}は累計${player.totalUnitsDrunk} unitに達して脱落…!所有物件はすべて銀行に返却された。`,
+    bankrupt
+      ? `${player.name}は自己破産を宣言してリタイア。所有物件はすべて更地に戻った。`
+      : `${player.name}は累計${player.totalUnitsDrunk} unitに達して脱落…!所有物件はすべて銀行に返却された。`,
   );
 
-  const eliminated: GameState = { ...state, players, ownership, shopLevel, mortgages, log };
+  const eliminated: GameState = { ...state, players, ownership, shopLevel, mortgages, customNames, squares, log };
   // 誰が抜けたのかを全員に知らせる(タップで進行)
   return pushNotice(eliminated, {
     kind: "elimination",
     playerId,
-    title: `${player.name} 脱落…`,
-    detail: `累計${player.totalUnitsDrunk} unitに到達。所有していた物件はすべて銀行に返却された。おつかれさま!`,
+    title: bankrupt ? `${player.name} 自己破産` : `${player.name} 脱落…`,
+    detail: bankrupt
+      ? "自分から降りた。所有していた物件はすべて更地に戻った。おつかれさま!"
+      : `累計${player.totalUnitsDrunk} unitに到達。所有していた物件はすべて銀行に返却された。おつかれさま!`,
   });
+}
+
+/** 自分から降りる(自己破産)。脱落と同じ後始末をして、文言だけ変える。 */
+export function bankruptPlayer(state: GameState, playerId: number): GameState {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player || player.eliminated || state.phase !== "playing") return state;
+  return eliminatePlayer(state, playerId, "bankruptcy");
 }
 
 /**
@@ -60,7 +85,7 @@ export function applyElimination(state: GameState): GameState {
   for (const player of state.players) {
     if (player.eliminated) continue;
     if (player.totalUnitsDrunk < state.eliminationThreshold) continue;
-    next = eliminatePlayer(next, player.id);
+    next = eliminatePlayer(next, player.id, "threshold");
   }
 
   const alive = next.players.filter((p) => !p.eliminated);

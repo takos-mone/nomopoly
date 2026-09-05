@@ -8,7 +8,7 @@ import {
   resolveDuelOutcome,
 } from "../logic/cardEffects";
 import { createPendingDrink, pushGain, pushLog, pushNotice } from "../logic/drinkEngine";
-import { DEFAULT_ELIMINATION_THRESHOLD, applyElimination } from "../logic/elimination";
+import { DEFAULT_ELIMINATION_THRESHOLD, applyElimination, bankruptPlayer } from "../logic/elimination";
 import {
   CONVENIENCE_RENT_BY_COUNT,
   DEFAULT_RENT_GROWTH,
@@ -20,7 +20,7 @@ import {
   calcPropertyRent,
   calcUtilityRent,
 } from "../logic/rent";
-import type { EndCondition, GameState, Player, PropertySquare, ConvenienceSquare, TradeOffer } from "../types";
+import type { EndCondition, GameState, Player, PropertySquare, ConvenienceSquare, Square, TradeOffer } from "../types";
 import { isEmptyTradeOffer, isOwnable } from "../types";
 
 export type GameAction =
@@ -30,7 +30,12 @@ export type GameAction =
       eliminationThreshold?: number;
       endCondition?: EndCondition;
       rentGrowth?: RentGrowth;
+      customNaming?: boolean;
     }
+  /** 命名モードで、買った本人が物件名を決める。空文字なら元の名前のまま */
+  | { type: "SET_SQUARE_NAME"; name: string }
+  /** 自分から降りる(自己破産)。所有物件は更地に戻る */
+  | { type: "DECLARE_BANKRUPTCY"; playerId: number }
   /** dice は UI 側で先に出目を確定して見せてから渡す。省略時はここで振る */
   | { type: "ROLL_DICE"; dice?: [number, number] }
   | { type: "CONFIRM_PURCHASE" }
@@ -73,6 +78,12 @@ export const TAXI_OWNER_JAIL_TURNS = 1;
 export const JAIL_ESCAPE_COST = 3;
 
 
+/** プレイヤーが付けた名前を盤面データに載せる */
+function withCustomNames(squares: Square[], customNames: Record<number, string>): Square[] {
+  if (Object.keys(customNames).length === 0) return squares;
+  return squares.map((sq) => (customNames[sq.id] ? { ...sq, name: customNames[sq.id] } : sq));
+}
+
 export function createInitialState(): GameState {
   return {
     players: [],
@@ -97,6 +108,9 @@ export function createInitialState(): GameState {
     eliminationThreshold: DEFAULT_ELIMINATION_THRESHOLD,
     endCondition: "lastSurvivor",
     rentGrowth: DEFAULT_RENT_GROWTH,
+    customNaming: false,
+    customNames: {},
+    pendingNaming: null,
     phase: "setup",
   };
 }
@@ -150,13 +164,15 @@ function drawRandomCard(pile: "chance" | "communityChest") {
 }
 
 /**
- * 飲み代が発生したとき、その物件の所有者に「飲み代の半分」の免除権を与える。
+ * 飲み代が発生したとき、その物件の所有者に「飲み代と同額」の免除権を与える。
  * 土地を買う旨みが薄いという問題への対処で、貸す側にも実利を持たせるためのルール。
  *
  * 支払い側がどう処理したか(飲みきる/先送り/免除権/抵当/交渉)や、
  * 「今日は休み」で無効化されたかどうかに関係なく、飲み代が発生した時点で確定させる。
  * 支払い側の都合で貸主の収入が消えるのは筋が通らないため。
- * 端数は切り捨て(1 unitの飲み代では0)。
+ *
+ * 収入は飲み代と同額。以前は半額だったが、土地を持つ側の見返りが薄く、
+ * 買って育てる動機が弱かったため同額に引き上げた。
  */
 function grantRentIncome(
   state: GameState,
@@ -164,7 +180,7 @@ function grantRentIncome(
   squareName: string,
   rent: number,
 ): GameState {
-  const gain = Math.floor(rent / 2);
+  const gain = Math.floor(rent);
   if (gain <= 0) return state;
   const owner = state.players.find((p) => p.id === ownerId);
   if (!owner || owner.eliminated) return state;
@@ -464,7 +480,8 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       // 通知を捨てるため、カードの予約移動は消化できなくなる。ここで先に反映しておく。
       return applyPendingCardMove({
         ...action.state,
-        squares: createInitialState().squares,
+        // 盤面はコード側の定義で作り直すので、プレイヤーが付けた名前をここで載せ直す
+        squares: withCustomNames(createInitialState().squares, action.state.customNames ?? {}),
         notices: [],
       });
 
@@ -525,6 +542,7 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         eliminationThreshold: action.eliminationThreshold ?? DEFAULT_ELIMINATION_THRESHOLD,
         endCondition: action.endCondition ?? "lastSurvivor",
         rentGrowth: action.rentGrowth ?? DEFAULT_RENT_GROWTH,
+        customNaming: action.customNaming ?? false,
         log: pushLog([], 1, -1, "ゲーム開始!"),
       };
     }
@@ -620,6 +638,8 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         ownership: { ...state.ownership, [squareId]: player.id },
         shopLevel: { ...state.shopLevel, [squareId]: state.shopLevel[squareId] ?? 0 },
         pendingPurchase: null,
+        // 命名モードなら、取得の通知より先に名前を聞く
+        pendingNaming: state.customNaming ? { squareId, playerId: player.id } : null,
         log,
       };
       return pushGain(
@@ -629,6 +649,36 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         `${square.name} を取得!`,
         "",
       );
+    }
+
+    case "SET_SQUARE_NAME": {
+      if (!state.pendingNaming) return state;
+      const { squareId, playerId } = state.pendingNaming;
+      const name = action.name.trim().slice(0, 20);
+      if (!name) return { ...state, pendingNaming: null };
+      const customNames = { ...state.customNames, [squareId]: name };
+      const player = state.players.find((p) => p.id === playerId);
+      return {
+        ...state,
+        customNames,
+        squares: withCustomNames(createInitialState().squares, customNames),
+        pendingNaming: null,
+        log: pushLog(state.log, state.turn, playerId, `${player?.name ?? "誰か"}はこの店を「${name}」と名付けた。`),
+      };
+    }
+
+    case "DECLARE_BANKRUPTCY": {
+      const retired = bankruptPlayer(state, action.playerId);
+      if (retired === state) return state;
+      // 降りた本人の手番だったなら、そのまま次の人へ渡す
+      const wasCurrent = state.players[state.currentPlayerIndex]?.id === action.playerId;
+      const alive = retired.players.filter((p) => !p.eliminated);
+      if (!wasCurrent || alive.length <= 1) return retired;
+      return advanceToNextPlayer({
+        ...retired,
+        pendingPurchase: null,
+        pendingNaming: null,
+      });
     }
 
     case "DECLINE_PURCHASE": {
