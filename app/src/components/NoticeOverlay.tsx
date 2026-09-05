@@ -10,7 +10,8 @@ import { isOwnable } from "../types";
 import "./NoticeOverlay.css";
 
 /** カードをめくるまでの焦らし時間 */
-const CARD_TEASE_MS = 1500;
+/** 3Dのカードが山から手前まで来るまで(Card3D の LIFT + TRAVEL に合わせる) */
+const CARD_TEASE_MS = 1050;
 /** コインが回っている時間 */
 const COIN_TEASE_MS = 1300;
 
@@ -202,9 +203,10 @@ export function NoticeOverlay({ notice, state, onDismiss, onDiceViewChange }: No
   }
 
   if (isCard && !revealed) {
+    // カードそのものは3Dで山から手前へ飛んでくる。ここは盤を隠さない小さな添え書きだけ。
     return (
       <div
-        className="notice-overlay"
+        className="notice-overlay notice-overlay--compact"
         role="button"
         tabIndex={0}
         onClick={handleActivate}
@@ -212,11 +214,8 @@ export function NoticeOverlay({ notice, state, onDismiss, onDiceViewChange }: No
           if (e.key === "Enter" || e.key === " ") handleActivate();
         }}
       >
-        <div className={`notice-cardback notice-cardback--${body.variant}`}>
-          <div className="notice-cardback__shine" />
-          <span className="notice-cardback__label">{body.tag}</span>
-          <div className="notice-cardback__mark">{body.icon}</div>
-          <span className="notice-cardback__hint">めくっています…</span>
+        <div className="notice-utility-dice">
+          <span className="notice-coin__hint">{body.tag}を引いています…</span>
         </div>
       </div>
     );
@@ -225,7 +224,7 @@ export function NoticeOverlay({ notice, state, onDismiss, onDiceViewChange }: No
   return (
     <div
       // 交通の出目は3Dのサイコロが主役なので、盤を隠さないコンパクト表示にする
-      className={isUtilityDice ? "notice-overlay notice-overlay--compact" : "notice-overlay"}
+      className={isUtilityDice || isCard ? "notice-overlay notice-overlay--compact" : "notice-overlay"}
       role="button"
       tabIndex={0}
       onClick={handleActivate}

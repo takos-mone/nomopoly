@@ -7,10 +7,13 @@
 
 /* --- レイアウト(3Dビューは横に広いので上限を広げる) --- */
 .app-header { max-width: 1440px; width: 100%; margin: auto; }
-/* ロゴは旧プロダクトの看板画像そのもの。文字を描き足さず、黒縁だけで盤面と質感を合わせる。 */
-.app-header__logo {
+/*
+ * ロゴは枠で囲わず、看板と同じ系統の幾何学サンセットで文字として組む。
+ * Jost は Futura 系で、看板の NOMOPOLY のレターフォームに一番近い。
+ */
+.app-header h1.app-header__logo {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
   gap: 10px;
   margin: 0;
@@ -19,38 +22,27 @@
   border: 0;
   box-shadow: none;
   border-radius: 0;
+  font-family: "Jost", "Futura", "Century Gothic", var(--sans);
 }
-/* 看板画像から NOMOPOLY のロゴ部分だけを切り出して使う */
 .app-header__wordmark {
-  display: block;
-  position: relative;
-  width: 216px;
-  height: 43px;
-  overflow: hidden;
-  border: 3px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 3px 0 var(--line);
-}
-.app-header__wordmark img {
-  position: absolute;
-  width: 361px;
-  height: auto;
-  left: -71px;
-  top: -146px;
+  font-weight: 700;
+  font-size: clamp(28px, 6vw, 42px);
+  line-height: 1;
+  letter-spacing: 0.005em;
+  color: var(--noren);
 }
 /* 3Dであること自体が今回の売りなので、押し出した立体文字で強調する */
 .app-header__threed {
-  font: 900 30px/1 var(--heading);
   font-style: normal;
-  letter-spacing: 0.02em;
-  color: #fff;
-  -webkit-text-stroke: 3px var(--line);
-  paint-order: stroke fill;
+  font-weight: 700;
+  font-size: clamp(24px, 5vw, 36px);
+  line-height: 1;
+  color: var(--gold);
   text-shadow:
-    2px 2px 0 var(--gold),
-    4px 4px 0 var(--gold-dark),
-    6px 6px 0 var(--line);
+    2px 2px 0 var(--gold-dark),
+    4px 4px 0 var(--line);
 }
+
 .app-layout { max-width: 1440px; width: 100%; padding: 16px 24px 32px; gap: 24px; }
 .app-layout__board { max-width: none; flex: 1 1 640px; }
 .app-layout__sidebar { flex: 0 1 300px; }

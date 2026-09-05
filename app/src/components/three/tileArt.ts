@@ -21,6 +21,8 @@ const PANEL = "#fffdf7";
 const RES = 192;
 const BODY = '"Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif';
 const DISPLAY = '"Yusei Magic", "Zen Maru Gothic", sans-serif';
+/** 看板の NOMOPOLY と同じ系統の幾何学サンセット */
+const LOGO = '"Jost", "Futura", "Century Gothic", sans-serif';
 /** 立体の色帯が乗る領域。ここには描かない。 */
 const BAND = RES * 0.24;
 
@@ -446,9 +448,12 @@ export function tileFaceTexture(square: Square): CanvasTexture {
   });
 }
 
-/** 盤中央のロゴ。旧版ヘッダーと同じ「緋色の札・白の内フチ・黒の外枠」。 */
+/**
+ * 盤中央のロゴ。ヘッダーと同じ「NOMOPOLY 3D」を、同じ幾何学サンセットで組む。
+ * 枠で囲わず文字だけを置くことで、盤に刷られた表記に見せる。
+ */
 export function centerLogoTexture(): CanvasTexture {
-  const W = 512;
+  const W = 768;
   const H = 256;
   const hit = cache.get("logo");
   if (hit) return hit;
@@ -457,28 +462,31 @@ export function centerLogoTexture(): CanvasTexture {
   canvas.height = H;
   const c = canvas.getContext("2d");
   if (!c) throw new Error("2Dコンテキストを取得できませんでした");
-  const x = 24;
-  const y = 62;
-  const w = W - 48;
-  const h = 132;
-  const r = h / 2;
-  const plate = (inset: number, fill: string) => {
-    c.beginPath();
-    c.roundRect(x + inset, y + inset, w - inset * 2, h - inset * 2, r - inset);
-    c.fillStyle = fill;
-    c.fill();
-  };
-  plate(0, INK);
-  plate(7, "#ffffff");
-  plate(14, NOREN);
-  c.textAlign = "center";
-  c.textBaseline = "middle";
-  c.font = `900 62px ${DISPLAY}`;
-  c.fillStyle = "#ffffff";
-  c.fillText("飲もポリー", W / 2, y + h * 0.44);
-  c.font = `700 19px ${BODY}`;
-  c.fillStyle = "#ffe3b0";
-  c.fillText("N O M O P O L Y", W / 2, y + h * 0.78);
+
+  c.textBaseline = "alphabetic";
+  c.font = `700 108px ${LOGO}`;
+  const word = "NOMOPOLY";
+  const gap = 22;
+  c.font = `700 92px ${LOGO}`;
+  const threedWidth = c.measureText("3D").width;
+  c.font = `700 108px ${LOGO}`;
+  const wordWidth = c.measureText(word).width;
+  const left = (W - (wordWidth + gap + threedWidth)) / 2;
+  const baseline = H / 2 + 38;
+
+  c.fillStyle = NOREN;
+  c.fillText(word, left, baseline);
+
+  // 3D は金の押し出しで立体的に見せる
+  c.font = `700 92px ${LOGO}`;
+  const tx = left + wordWidth + gap;
+  c.fillStyle = INK;
+  c.fillText("3D", tx + 8, baseline + 8);
+  c.fillStyle = "#b8842a";
+  c.fillText("3D", tx + 4, baseline + 4);
+  c.fillStyle = GOLD;
+  c.fillText("3D", tx, baseline);
+
   const tex = new CanvasTexture(canvas);
   tex.colorSpace = SRGBColorSpace;
   cache.set("logo", tex);
@@ -600,6 +608,119 @@ export function buildingFacadeTexture(wall: string): CanvasTexture {
       // 階の見切り
       c.fillStyle = "#00000022";
       c.fillRect(0, (row + 1) * ch - 3, W, 3);
+    }
+  });
+}
+
+/* --- 3Dで引くカード --- */
+
+const CARD_W = 320;
+const CARD_H = 460;
+
+function cardCanvas(key: string, draw: (c: CanvasRenderingContext2D) => void): CanvasTexture {
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const canvas = document.createElement("canvas");
+  canvas.width = CARD_W;
+  canvas.height = CARD_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("2Dコンテキストを取得できませんでした");
+  draw(ctx);
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  cache.set(key, tex);
+  return tex;
+}
+
+function cardFrame(c: CanvasRenderingContext2D, fill: string) {
+  c.fillStyle = fill;
+  c.beginPath();
+  c.roundRect(0, 0, CARD_W, CARD_H, 22);
+  c.fill();
+  c.lineWidth = 10;
+  c.strokeStyle = INK;
+  c.beginPath();
+  c.roundRect(5, 5, CARD_W - 10, CARD_H - 10, 18);
+  c.stroke();
+}
+
+/** カードの表。引いたカードの名前を大きく出す(効果の説明は画面下のパネル側) */
+export function cardFaceTexture(pile: "chance" | "communityChest", name: string): CanvasTexture {
+  return cardCanvas(`card:${pile}:${name}`, (c) => {
+    const accent = pile === "chance" ? GOLD : CHEST_BLUE;
+    cardFrame(c, PANEL);
+
+    c.fillStyle = accent;
+    c.beginPath();
+    c.roundRect(18, 18, CARD_W - 36, 62, 12);
+    c.fill();
+    c.font = `700 26px ${BODY}`;
+    c.fillStyle = pile === "chance" ? INK : "#ffffff";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText(pile === "chance" ? "チャンス" : "共同基金", CARD_W / 2, 50);
+
+    // 名前は入るまで縮めて3行まで
+    let size = 40;
+    let lines: string[] = [];
+    for (; size > 16; size -= 1) {
+      c.font = `700 ${size}px ${BODY}`;
+      lines = wrap(c, name, CARD_W - 56);
+      if (lines.length <= 3) break;
+    }
+    c.fillStyle = INK;
+    const lead = size * 1.2;
+    const top = CARD_H * 0.55 - ((lines.length - 1) * lead) / 2;
+    lines.forEach((line, i) => c.fillText(line, CARD_W / 2, top + i * lead));
+
+    c.fillStyle = accent;
+    c.fillRect(CARD_W / 2 - 40, CARD_H - 62, 80, 6);
+  });
+}
+
+/** カードの裏。山と同じ意匠にして、どちらの山から来たか分かるようにする */
+export function cardBackTexture(pile: "chance" | "communityChest"): CanvasTexture {
+  return cardCanvas(`cardback:${pile}`, (c) => {
+    cardFrame(c, pile === "chance" ? GOLD : CHEST_BLUE);
+    c.lineWidth = 6;
+    c.strokeStyle = "#ffffffcc";
+    c.beginPath();
+    c.roundRect(26, 26, CARD_W - 52, CARD_H - 52, 12);
+    c.stroke();
+
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    if (pile === "chance") {
+      c.font = `900 190px ${DISPLAY}`;
+      c.lineJoin = "round";
+      c.lineWidth = 16;
+      c.strokeStyle = INK;
+      c.strokeText("?", CARD_W / 2, CARD_H / 2);
+      c.fillStyle = NOREN;
+      c.fillText("?", CARD_W / 2, CARD_H / 2);
+    } else {
+      // 宝箱
+      const x = 78;
+      const y = CARD_H / 2;
+      const w = 164;
+      c.lineJoin = "round";
+      c.lineWidth = 10;
+      c.strokeStyle = INK;
+      c.fillStyle = PANEL;
+      c.beginPath();
+      c.arc(x + w / 2, y, w / 2, Math.PI, 2 * Math.PI);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.beginPath();
+      c.rect(x, y, w, 86);
+      c.fill();
+      c.stroke();
+      c.fillStyle = GOLD;
+      c.beginPath();
+      c.rect(x + w / 2 - 18, y - w / 2, 36, 86 + w / 2);
+      c.fill();
+      c.stroke();
     }
   });
 }

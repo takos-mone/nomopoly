@@ -1,24 +1,11 @@
-import { Component, lazy, Suspense, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import type { GameState } from "../../types";
 import { Board } from "../Board";
+import type { CardView } from "./Card3D";
 import type { DiceView } from "./Dice3D";
 import "./WorldBoard.css";
 
 const WorldScene = lazy(() => import("./WorldScene"));
-
-/**
- * カメラの動き方。
- * - overview: 盤全体を固定で見る(自分で回す)
- * - followFixed: 向きは固定のまま、手番の駒を追って平行移動する
- * - followOutward: 盤の内側に回り込み、駒ごしに外周の建物を見る
- */
-export type CameraMode = "overview" | "followFixed" | "followOutward";
-
-const CAMERA_MODES: { value: CameraMode; label: string }[] = [
-  { value: "overview", label: "全体を見る" },
-  { value: "followFixed", label: "コマを追う" },
-  { value: "followOutward", label: "街並みを見る" },
-];
 
 export interface BoardProps {
   state: GameState;
@@ -26,6 +13,8 @@ export interface BoardProps {
   visualPositions: Record<number, number>;
   /** 3Dのサイコロに見せる、いま振っている最中かどうかと確定した出目 */
   diceView: DiceView;
+  /** 山から引いて手前で見せるカード。引いていないときは null */
+  cardView: CardView | null;
   overlay?: ReactNode;
 }
 
@@ -37,11 +26,27 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
 
 export function GameBoard(props: BoardProps) {
   const [flat, setFlat] = useState(false);
-  // 既定は街並み。開いた瞬間に「自分の駒と店が見える」ほうが状況が分かりやすい。
-  const [mode, setMode] = useState<CameraMode>("followOutward");
-  const [dragPan, setDragPan] = useState(false);
-  const [cameraKey, setCameraKey] = useState(0);
+  /**
+   * カメラは既定で手番の駒を追う。モードは持たせない。
+   * ユーザーが盤を触っている間だけ追従を止めて自由に見渡せるようにし、
+   * 次の動きが始まったら黙って駒に戻る。
+   */
+  const [exploring, setExploring] = useState(false);
+  const [recenterKey, setRecenterKey] = useState(0);
   const current = props.state.players[props.state.currentPlayerIndex];
+  const tokenPosition = props.visualPositions[current?.id] ?? current?.position ?? 0;
+
+  // 「何かが起きた」合図。駒が1マス進む・サイコロを振る・通知や確認が出る、のいずれか。
+  const actionSignal = [
+    tokenPosition,
+    props.diceView.rolling,
+    props.state.notices.length > 0,
+    !!props.state.pendingDrink,
+    !!props.state.pendingPurchase,
+  ].join(":");
+  useEffect(() => {
+    setExploring(false);
+  }, [actionSignal]);
   const fallback = <div className="world-fallback" role="status">3D表示を開始できませんでした。<button onClick={() => setFlat(true)}>平面表示で続ける</button></div>;
   return (
     <section className="world-board" aria-label="飲もポリーのゲーム盤面">
@@ -54,39 +59,28 @@ export function GameBoard(props: BoardProps) {
         <div className="world-viewport" data-testid="world-viewport">
           <SceneBoundary fallback={fallback}>
             <Suspense fallback={<div className="world-loading" role="status">街の灯りをつけています…</div>}>
-              <WorldScene {...props} mode={mode} dragPan={dragPan} cameraKey={cameraKey} />
+              <WorldScene {...props} exploring={exploring} onExplore={() => setExploring(true)} recenterKey={recenterKey} />
             </Suspense>
           </SceneBoundary>
-          <div className="world-camera-controls" role="group" aria-label="カメラの操作">
-            {CAMERA_MODES.map(item => (
+          {/* 自分で見渡している間だけ、駒に戻る手段を出す */}
+          {exploring && (
+            <div className="world-camera-controls">
               <button
-                key={item.value}
-                aria-pressed={mode === item.value}
                 onClick={() => {
-                  setMode(item.value);
-                  if (item.value === "overview") setCameraKey(cameraKey + 1);
+                  setExploring(false);
+                  setRecenterKey(recenterKey + 1);
                 }}
               >
-                {item.label}
+                🎯 コマに戻す
               </button>
-            ))}
-            <button
-              className="world-camera-controls__drag"
-              aria-pressed={dragPan}
-              onClick={() => setDragPan(!dragPan)}
-              title="ドラッグしたときの動きを切り替える"
-            >
-              {dragPan ? "✋ 移動" : "🔄 回転"}
-            </button>
-          </div>
+            </div>
+          )}
           {/* 操作パネルは盤の上に重ねる。下に置くと視線が盤から外れ、
               スマホでは盤そのものが押し出されて見えなくなるため。 */}
           <div className="world-action-overlay">
             {props.overlay ?? <p className="world-waiting" role="status">街を移動中、またはイベントを確認中です</p>}
           </div>
-          <p className="world-gesture">
-            {`ドラッグで${dragPan ? "移動" : "回転"} · 2本指で拡大・移動 · 建物をタップ`}
-          </p>
+          <p className="world-gesture">ドラッグで回転 · 2本指で拡大と移動 · 建物をタップ</p>
         </div>
         <div className="world-location"><span>現在のプレイヤー</span><strong>{current?.name}</strong><span>{props.state.squares[current?.position]?.name}</span></div>
       </>}

@@ -7,8 +7,9 @@ import { COLOR_GROUP_HEX } from "../../data/board";
 import { PLAYER_COLORS } from "../../data/playerColors";
 import { isOwnable, type Player, type Square } from "../../types";
 import { BoardEffectLayer, PilePop, ShakeGroup, useBoardEffects, type PilePulse } from "./BoardEffects";
+import { Card3D } from "./Card3D";
 import { Dice3D } from "./Dice3D";
-import type { BoardProps, CameraMode } from "./GameBoard";
+import type { BoardProps } from "./GameBoard";
 import { PlayerStands } from "./PlayerStands";
 import {
   buildingFacadeTexture,
@@ -18,7 +19,16 @@ import {
   tileFaceTexture,
   whenTileFontsReady,
 } from "./tileArt";
-import { SHOP_OFFSET, TILE_SIZE, TILE_TOP, outwardDirection, sideRotation, worldPosition } from "./worldLayout";
+import {
+  CHANCE_PILE,
+  CHEST_PILE,
+  SHOP_OFFSET,
+  TILE_SIZE,
+  TILE_TOP,
+  outwardDirection,
+  sideRotation,
+  worldPosition,
+} from "./worldLayout";
 
 /* 飲もポリーの盤(index.css の :root)と同じ色を 3D 側でも使う。
    クリーム地・黒罫線・緋色のロゴ・金のトリムが、旧版と共通のデザイン言語。 */
@@ -584,14 +594,14 @@ function CenterPiece({ pilePulse }: { pilePulse: PilePulse | null }) {
         <meshStandardMaterial color={PAPER} roughness={0.9} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, Math.PI / 4]} position={[0, 0.33, 0]}>
-        <planeGeometry args={[4.6, 2.3]} />
+        <planeGeometry args={[5.4, 1.8]} />
         <meshStandardMaterial map={centerLogoTexture()} transparent roughness={0.9} />
       </mesh>
       <PilePop pulseKey={pilePulse?.pile === "chance" ? pilePulse.key : 0}>
-        <CardPile position={[3.6, 0.3, 3.6]} color={GOLD} />
+        <CardPile position={CHANCE_PILE} color={GOLD} />
       </PilePop>
       <PilePop pulseKey={pilePulse?.pile === "communityChest" ? pilePulse.key : 0}>
-        <TreasureChest position={[-3.7, 0.3, -3.7]} />
+        <TreasureChest position={CHEST_PILE} />
       </PilePop>
     </group>
   );
@@ -774,21 +784,20 @@ function Token({ player, position, active }: { player: Player; position: number;
 
 function CameraRig({
   targetId,
-  mode,
-  dragPan,
-  cameraKey,
+  exploring,
+  onExplore,
+  recenterKey,
 }: {
   targetId: number;
-  mode: CameraMode;
-  dragPan: boolean;
-  cameraKey: number;
+  /** ユーザーが自分で見渡している間は true。このあいだカメラには触らない。 */
+  exploring: boolean;
+  onExplore: () => void;
+  recenterKey: number;
 }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const { camera, size } = useThree();
   /** ユーザーがドラッグで向けた「外向きからのずれ」。角を曲がっても同じ見え方を保つ。 */
   const azimuthOffset = useRef(0);
-  /** 操作中はこちらからカメラに触らない。触ると引っ張り合いになる。 */
-  const dragging = useRef(false);
   // ドラッグ終了時に「いまどのマスを見ていたか」を参照するための控え。
   // 描画中に書くとレンダーの副作用になるので、描画後に反映する。
   const targetIdRef = useRef(targetId);
@@ -804,37 +813,29 @@ function CameraRig({
   const pendingReset = useRef(true);
   useEffect(() => {
     pendingReset.current = true;
-  }, [cameraKey, size.width, mode]);
+  }, [recenterKey, size.width]);
 
   const placeCamera = () => {
     const c = controls.current;
     if (!c) return;
     const narrow = size.width < 600;
     azimuthOffset.current = 0;
-    if (mode === "followOutward") {
-      const [x, , z] = worldPosition(targetIdRef.current);
-      const [ox, oz] = outwardDirection(targetIdRef.current);
-      const d = narrow ? 12 : 10;
-      c.target.set(x + ox * 0.8, 1.2, z + oz * 0.8);
-      // 見下ろし約33度。浅いと盤の外の芝と空ばかりになり、深いとマスの文字が主役になる。
-      camera.position.set(c.target.x - ox * d * 0.84, c.target.y + d * 0.54, c.target.z - oz * d * 0.84);
-    } else {
-      const d = narrow ? 26 : 20;
-      camera.position.set(d * 0.72, d, d * 0.95);
-      c.target.set(0, 0, 0);
-    }
+    const [x, , z] = worldPosition(targetIdRef.current);
+    const [ox, oz] = outwardDirection(targetIdRef.current);
+    const d = narrow ? 12 : 10;
+    c.target.set(x + ox * 0.8, 1.2, z + oz * 0.8);
+    // 見下ろし約33度。浅いと盤の外の街ばかりになり、深いとマスの文字が主役になる。
+    camera.position.set(c.target.x - ox * d * 0.84, c.target.y + d * 0.54, c.target.z - oz * d * 0.84);
     c.update();
   };
 
-  // ドラッグが終わった向きを覚えておく。これで角を曲がっても同じ角度から見続けられる。
+  // 盤に触れた時点で追従をやめる。以降はユーザーの操作だけでカメラが動く。
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
-    const onStart = () => {
-      dragging.current = true;
-    };
+    const onStart = () => onExplore();
     const onEnd = () => {
-      dragging.current = false;
+      // 向けた角度は覚えておき、追従に戻ったときも同じ見え方を保つ
       const [ox, oz] = outwardDirection(targetIdRef.current);
       const offset = camera.position.clone().sub(c.target);
       const diff = Math.atan2(offset.x, offset.z) - Math.atan2(-ox, -oz);
@@ -846,7 +847,7 @@ function CameraRig({
       c.removeEventListener("start", onStart);
       c.removeEventListener("end", onEnd);
     };
-  }, [camera]);
+  }, [camera, onExplore]);
 
   useFrame((_, delta) => {
     const c = controls.current;
@@ -856,27 +857,14 @@ function CameraRig({
       placeCamera();
       return;
     }
-    if (mode === "overview" || dragging.current) return;
+    if (exploring) return;
+
+    // 手番の駒を、盤の内側から街並みごしに見る。
+    // 距離(ズーム)と仰角はユーザーの操作結果なので書き換えず、方位角と注視点だけ寄せる。
     const [x, , z] = worldPosition(targetId);
-    const k = 1 - Math.exp(-3.4 * delta);
-
-    if (mode === "followFixed") {
-      // 視点の向きは変えず、注視点と一緒にカメラを平行移動するだけ。
-      const desired = new Vector3(x * 0.5, 0, z * 0.5);
-      const change = desired.sub(c.target).multiplyScalar(1 - Math.exp(-3 * delta));
-      c.target.add(change);
-      camera.position.add(change);
-      c.update();
-      return;
-    }
-
-    // followOutward: 盤の内側から駒ごしに外周の建物を見る。
-    //
-    // 距離(ズーム)と仰角はユーザーの操作結果なので一切書き換えず、
-    // 方位角と注視点だけを寄せる。以前は毎フレーム距離を計算し直していたため、
-    // 角を曲がると縮尺が変わり、ズームアウトしても引き戻されていた。
     const [ox, oz] = outwardDirection(targetId);
     const focus = new Vector3(x + ox * 0.8, 1.2, z + oz * 0.8);
+    const k = 1 - Math.exp(-3.4 * delta);
 
     const offset = camera.position.clone().sub(c.target);
     const radius = offset.length();
@@ -901,9 +889,9 @@ function CameraRig({
       makeDefault
       // 盤は水平なので、画面平面ではなく地面に沿って平行移動させる。
       screenSpacePanning={false}
-      mouseButtons={{ LEFT: dragPan ? MOUSE.PAN : MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
-      // 2本指は常に「広げて拡大・滑らせて平行移動」。1本指の役割を切り替えても失われないようにする。
-      touches={{ ONE: dragPan ? TOUCH.PAN : TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
+      // 指1本で回す、2本で拡大と移動。モードを切り替えるボタンは要らない。
+      mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
+      touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
       minDistance={5}
       maxDistance={60}
       minPolarAngle={0.25}
@@ -912,7 +900,7 @@ function CameraRig({
   );
 }
 
-type SceneProps = BoardProps & { mode: CameraMode; dragPan: boolean; cameraKey: number };
+type SceneProps = BoardProps & { exploring: boolean; onExplore: () => void; recenterKey: number };
 
 function Town(props: SceneProps) {
   const { state, visualPositions, onSelectSquare } = props;
@@ -969,7 +957,8 @@ function Town(props: SceneProps) {
             key={player.id}
             player={player}
             position={visualPositions[player.id] ?? player.position}
-            active={player.id === current?.id}
+            // カードを手前に出している間は、DOMのラベルがカードの上に重なるので隠す
+            active={player.id === current?.id && !props.cardView}
           />
         ))}
         <Dice3D
@@ -980,11 +969,12 @@ function Town(props: SceneProps) {
         <PlayerStands players={state.players} />
         <BoardEffectLayer effects={effects} />
       </ShakeGroup>
+      <Card3D view={props.cardView} />
       <CameraRig
         targetId={visualPositions[current?.id] ?? current?.position ?? 0}
-        mode={props.mode}
-        dragPan={props.dragPan}
-        cameraKey={props.cameraKey}
+        exploring={props.exploring}
+        onExplore={props.onExplore}
+        recenterKey={props.recenterKey}
       />
     </>
   );

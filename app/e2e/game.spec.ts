@@ -14,13 +14,16 @@ test('plays in 3D, inspects a property, switches views, and resumes its independ
   await expect(page.locator('.world-directory button')).toHaveCount(40);
   await page.screenshot({ path: `test-results/${testInfo.project.name}-world.png`, fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'コマを追う' }).click();
-  await expect(page.getByRole('button', { name: 'コマを追う' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: '街並みを見る' }).click();
-  await expect(page.getByRole('button', { name: '街並みを見る' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: '全体を見る' }).click();
-  await page.getByRole('button', { name: '🔄 回転' }).click();
-  await expect(page.getByRole('button', { name: '✋ 移動' })).toHaveAttribute('aria-pressed', 'true');
+  // カメラはモードを持たず、盤に触れている間だけ追従をやめる。
+  // 触ったら「コマに戻す」が現れ、押すと消えて追従に戻る。
+  await expect(page.getByRole('button', { name: /コマに戻す/ })).toHaveCount(0);
+  await page.locator('.world-viewport canvas').hover();
+  await page.mouse.down();
+  await page.mouse.move(320, 260, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.getByRole('button', { name: /コマに戻す/ })).toBeVisible();
+  await page.getByRole('button', { name: /コマに戻す/ }).click();
+  await expect(page.getByRole('button', { name: /コマに戻す/ })).toHaveCount(0);
   await page.locator('.world-directory summary').click();
   await page.locator('.world-directory button').nth(1).click();
   await expect(page.locator('.modal-box')).toBeVisible();

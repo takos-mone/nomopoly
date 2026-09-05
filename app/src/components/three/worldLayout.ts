@@ -38,3 +38,7 @@ export function outwardDirection(id: number): [number, number] {
   const angle = sideRotation(id);
   return [Math.sin(angle), Math.cos(angle)];
 }
+
+/** 中央に置く2つの山の位置。カードを引く演出の出発点にも使う。 */
+export const CHANCE_PILE: [number, number, number] = [3.6, 0.3, 3.6];
+export const CHEST_PILE: [number, number, number] = [-3.7, 0.3, -3.7];

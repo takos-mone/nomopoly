@@ -18,6 +18,7 @@ import { useTokenAnimation } from "./hooks/useTokenAnimation";
 import { clearSavedGame, saveGame } from "./logic/persistence";
 import { isMuted, playClick, playElimination, playTurnStart, setMuted } from "./logic/sound";
 import { createInitialState, gameReducer } from "./state/gameReducer";
+import type { CardView } from "./components/three/Card3D";
 import { IDLE_DICE, type DiceView } from "./components/three/Dice3D";
 import "./App.css";
 import "./world.css";
@@ -147,6 +148,13 @@ function App() {
   // 通知を消化しきるまで、飲み代確認やサイコロなどの操作は出さない(表示順の破綻を防ぐ)
   const noticesBlocking = state.notices.length > 0;
 
+  // 引いたカードは3Dで山から手前へ運ぶ。ログの長さを種にして、
+  // 同じカードを続けて引いても演出がやり直される。
+  const cardView: CardView | null =
+    activeNotice?.kind === "card"
+      ? { pile: activeNotice.pile, name: activeNotice.cardName, seq: state.log.length }
+      : null;
+
   // 交渉ボタンを出せる条件。自分のターン中、他の保留状態(飲み確認・選択・購入確認・
   // 交渉中そのもの)が何もないとき、かつ交渉相手になれる生存者がいるとき。
   const canOpenTrade =
@@ -171,10 +179,7 @@ function App() {
     <>
       <header className="app-header">
         <h1 className="app-header__logo">
-          {/* ゲーム中はキャラクターの絵は出さず、看板から NOMOPOLY の文字だけを切り出す */}
-          <span className="app-header__wordmark">
-            <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt="飲もポリー" />
-          </span>
+          <span className="app-header__wordmark">NOMOPOLY</span>
           <em className="app-header__threed">3D</em>
         </h1>
         <span className="app-header__subtitle">街をめぐる、夜がはじまる。</span>
@@ -216,6 +221,7 @@ function App() {
             onSelectSquare={setSelectedSquareId}
             visualPositions={visualPositions}
             diceView={diceView}
+            cardView={cardView}
             overlay={
               !busy && !noticesBlocking && !state.pendingDrink && !state.pendingChoice && !state.pendingTrade ? (
                 <DiceControls state={state} dispatch={dispatch} turnPhase={turnPhase} onDiceViewChange={setDiceView} />
