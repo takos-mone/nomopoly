@@ -5,7 +5,8 @@
  *
  * 引いた瞬間に画面全体をカードで覆うのではなく、盤から実際に1枚抜き出して
  * こちらへ運んでくる形にすることで、「いま引いた」感触を出す。
- * 効果の説明は画面下のパネルが受け持ち、この3Dカードは山と名前だけを見せる。
+ * 効果の説明もこのカード面に刷り込む。3D表示では別のポップアップを重ねず、
+ * 引いたカードそのものを読んでもらう。
  */
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
@@ -17,6 +18,8 @@ import { CHANCE_PILE, CHEST_PILE } from "./worldLayout";
 export interface CardView {
   pile: CardPileType;
   name: string;
+  /** カードの効果。カード面に刷り込んで読ませる。 */
+  description: string;
   /** 引くたびに増やす。同じカードを続けて引いても演出をやり直せるようにする。 */
   seq: number;
 }
@@ -101,7 +104,7 @@ export function Card3D({ view }: { view: CardView | null }) {
       <group ref={flip}>
         <mesh position={[0, 0, 0.006]}>
           <planeGeometry args={[CARD_W, CARD_H]} />
-          <meshBasicMaterial map={cardFaceTexture(view.pile, view.name)} toneMapped={false} />
+          <meshBasicMaterial map={cardFaceTexture(view.pile, view.name, view.description)} toneMapped={false} />
         </mesh>
         <mesh position={[0, 0, -0.006]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[CARD_W, CARD_H]} />

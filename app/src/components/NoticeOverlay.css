@@ -473,4 +473,16 @@
 }
 .notice-overlay--compact .notice-card__title { font-size: 17px; margin: 2px 0 4px; }
 .notice-overlay--compact .illustration--notice { display: none; }
-.notice-overlay--compact .notice-utility-dice { display: block; text-align: center; }
+/* コンパクト表示の下敷きは白いので、暗い盤の上を前提にした白文字のままだと読めない */
+.notice-overlay--compact .notice-utility-dice {
+  display: block;
+  text-align: center;
+  color: var(--ink);
+  text-shadow: none;
+}
+
+/* 3Dのカードを見せている間の、タップだけを受け取る透明な受け皿 */
+.notice-overlay--bare {
+  background: none;
+  backdrop-filter: none;
+}

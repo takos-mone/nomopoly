@@ -47,6 +47,9 @@ function App() {
   const [turnPhase, setTurnPhase] = useState<"in" | "idle">("idle");
   // 3Dのサイコロに渡す表示状態。出目を決めているのは DiceControls 側。
   const [diceView, setDiceView] = useState<DiceView>(IDLE_DICE);
+  // 平面表示かどうか。カードの効果を「3Dのカード面」と「ポップアップ」のどちらで
+  // 見せるかがこれで変わるため、盤面の中ではなくここで持つ。
+  const [flat, setFlat] = useState(false);
 
   useEffect(() => {
     const eliminatedCount = state.players.filter((p) => p.eliminated).length;
@@ -152,7 +155,12 @@ function App() {
   // 同じカードを続けて引いても演出がやり直される。
   const cardView: CardView | null =
     activeNotice?.kind === "card"
-      ? { pile: activeNotice.pile, name: activeNotice.cardName, seq: state.log.length }
+      ? {
+          pile: activeNotice.pile,
+          name: activeNotice.cardName,
+          description: activeNotice.cardDescription,
+          seq: state.log.length,
+        }
       : null;
 
   // 交渉ボタンを出せる条件。自分のターン中、他の保留状態(飲み確認・選択・購入確認・
@@ -222,6 +230,8 @@ function App() {
             visualPositions={visualPositions}
             diceView={diceView}
             cardView={cardView}
+            flat={flat}
+            onFlatChange={setFlat}
             overlay={
               !busy && !noticesBlocking && !state.pendingDrink && !state.pendingChoice && !state.pendingTrade ? (
                 <DiceControls state={state} dispatch={dispatch} turnPhase={turnPhase} onDiceViewChange={setDiceView} />
@@ -282,7 +292,13 @@ function App() {
       )}
 
       {activeNotice && (
-        <NoticeOverlay notice={activeNotice} state={state} onDismiss={dismissNotice} onDiceViewChange={setDiceView} />
+        <NoticeOverlay
+          notice={activeNotice}
+          state={state}
+          onDismiss={dismissNotice}
+          onDiceViewChange={setDiceView}
+          flat={flat}
+        />
       )}
       {!busy && !noticesBlocking && state.pendingChoice && (
         <TargetChoiceModal state={state} dispatch={dispatch} />

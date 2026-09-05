@@ -21,6 +21,11 @@ interface NoticeOverlayProps {
   onDismiss: () => void;
   /** 交通マスのサイコロを3D側でも振るための通知 */
   onDiceViewChange: (view: DiceView) => void;
+  /**
+   * 平面表示かどうか。3D表示ではカードの効果はカード面そのものに書いてあるので、
+   * 説明のポップアップは平面表示のときだけ出す。
+   */
+  flat: boolean;
 }
 
 const PILE_LABEL = {
@@ -109,7 +114,7 @@ function noticePlayerId(notice: Notice): number | null {
   return notice.kind === "card" ? null : notice.playerId;
 }
 
-export function NoticeOverlay({ notice, state, onDismiss, onDiceViewChange }: NoticeOverlayProps) {
+export function NoticeOverlay({ notice, state, onDismiss, onDiceViewChange, flat }: NoticeOverlayProps) {
   const body = buildBody(notice, state);
   // 着地マスが所有可能(土地・コンビニ・交通)なら、一言の説明ではなく
   // 所有者・購入価格・改装費・訪問時に飲む量までまとめて出す。
@@ -202,8 +207,26 @@ export function NoticeOverlay({ notice, state, onDismiss, onDiceViewChange }: No
     );
   }
 
+  if (isCard && !flat) {
+    // 3D表示では、カードそのものが山から手前へ飛んできて効果まで読める。
+    // ここに説明や添え書きを重ねるとカードが隠れるので、
+    // 画面全体を「次へ進むためのタップの受け皿」にするだけに留める
+    // (次へ進める案内は盤の上のパネルが出す)。
+    return (
+      <div
+        className="notice-overlay notice-overlay--bare"
+        role="button"
+        aria-label="カードを読み終えて次へ進む"
+        tabIndex={0}
+        onClick={handleActivate}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") handleActivate();
+        }}
+      />
+    );
+  }
+
   if (isCard && !revealed) {
-    // カードそのものは3Dで山から手前へ飛んでくる。ここは盤を隠さない小さな添え書きだけ。
     return (
       <div
         className="notice-overlay notice-overlay--compact"
@@ -224,7 +247,8 @@ export function NoticeOverlay({ notice, state, onDismiss, onDiceViewChange }: No
   return (
     <div
       // 交通の出目は3Dのサイコロが主役なので、盤を隠さないコンパクト表示にする
-      className={isUtilityDice || isCard ? "notice-overlay notice-overlay--compact" : "notice-overlay"}
+      // (カードは平面表示のときだけここへ来るので、通常の大きさで説明を出す)
+      className={isUtilityDice ? "notice-overlay notice-overlay--compact" : "notice-overlay"}
       role="button"
       tabIndex={0}
       onClick={handleActivate}

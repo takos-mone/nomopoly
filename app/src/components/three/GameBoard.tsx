@@ -15,6 +15,9 @@ export interface BoardProps {
   diceView: DiceView;
   /** 山から引いて手前で見せるカード。引いていないときは null */
   cardView: CardView | null;
+  /** 平面表示かどうか。カードの見せ方が変わるので状態は App が持つ。 */
+  flat: boolean;
+  onFlatChange: (flat: boolean) => void;
   overlay?: ReactNode;
 }
 
@@ -25,7 +28,7 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
 }
 
 export function GameBoard(props: BoardProps) {
-  const [flat, setFlat] = useState(false);
+  const { flat, onFlatChange: setFlat } = props;
   /**
    * カメラは既定で手番の駒を追う。モードは持たせない。
    * ユーザーが盤を触っている間だけ追従を止めて自由に見渡せるようにし、
@@ -130,7 +133,11 @@ export function GameBoard(props: BoardProps) {
           {/* 操作パネルは盤の上に重ねる。下に置くと視線が盤から外れ、
               スマホでは盤そのものが押し出されて見えなくなるため。 */}
           <div className="world-action-overlay">
-            {props.overlay ?? <p className="world-waiting" role="status">街を移動中、またはイベントを確認中です</p>}
+            {props.overlay ?? (
+              <p className="world-waiting" role="status">
+                {props.cardView ? "カードを読んだらタップして次へ" : "街を移動中、またはイベントを確認中です"}
+              </p>
+            )}
           </div>
           <p className="world-gesture">ドラッグで回転 · 2本指で拡大と移動 · 建物をタップ</p>
         </div>

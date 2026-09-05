@@ -616,15 +616,21 @@ export function buildingFacadeTexture(wall: string): CanvasTexture {
 
 const CARD_W = 320;
 const CARD_H = 460;
+/**
+ * カードは目の前まで持ってきて効果の文章まで読ませるので、
+ * 座標はそのままに実解像度だけ上げてにじみを防ぐ。
+ */
+const CARD_SCALE = 2;
 
 function cardCanvas(key: string, draw: (c: CanvasRenderingContext2D) => void): CanvasTexture {
   const hit = cache.get(key);
   if (hit) return hit;
   const canvas = document.createElement("canvas");
-  canvas.width = CARD_W;
-  canvas.height = CARD_H;
+  canvas.width = CARD_W * CARD_SCALE;
+  canvas.height = CARD_H * CARD_SCALE;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("2Dコンテキストを取得できませんでした");
+  ctx.scale(CARD_SCALE, CARD_SCALE);
   draw(ctx);
   const tex = new CanvasTexture(canvas);
   tex.colorSpace = SRGBColorSpace;
@@ -644,9 +650,16 @@ function cardFrame(c: CanvasRenderingContext2D, fill: string) {
   c.stroke();
 }
 
-/** カードの表。引いたカードの名前を大きく出す(効果の説明は画面下のパネル側) */
-export function cardFaceTexture(pile: "chance" | "communityChest", name: string): CanvasTexture {
-  return cardCanvas(`card:${pile}:${name}`, (c) => {
+/**
+ * カードの表。3D表示ではこのカード自体を読ませるので、名前だけでなく
+ * 効果の説明までここに刷り込む(別のポップアップで説明を重ねない)。
+ */
+export function cardFaceTexture(
+  pile: "chance" | "communityChest",
+  name: string,
+  description: string,
+): CanvasTexture {
+  return cardCanvas(`card:${pile}:${name}:${description}`, (c) => {
     const accent = pile === "chance" ? GOLD : CHEST_BLUE;
     cardFrame(c, PANEL);
 
@@ -660,18 +673,40 @@ export function cardFaceTexture(pile: "chance" | "communityChest", name: string)
     c.textBaseline = "middle";
     c.fillText(pile === "chance" ? "チャンス" : "共同基金", CARD_W / 2, 50);
 
-    // 名前は入るまで縮めて3行まで
-    let size = 40;
-    let lines: string[] = [];
-    for (; size > 16; size -= 1) {
-      c.font = `700 ${size}px ${BODY}`;
-      lines = wrap(c, name, CARD_W - 56);
-      if (lines.length <= 3) break;
+    // 名前は入るまで縮めて2行まで。残りは効果の説明にあてる。
+    let titleSize = 34;
+    let titleLines: string[] = [];
+    for (; titleSize > 16; titleSize -= 1) {
+      c.font = `700 ${titleSize}px ${BODY}`;
+      titleLines = wrap(c, name, CARD_W - 56);
+      if (titleLines.length <= 2) break;
     }
     c.fillStyle = INK;
-    const lead = size * 1.2;
-    const top = CARD_H * 0.55 - ((lines.length - 1) * lead) / 2;
-    lines.forEach((line, i) => c.fillText(line, CARD_W / 2, top + i * lead));
+    c.font = `700 ${titleSize}px ${BODY}`;
+    const titleLead = titleSize * 1.2;
+    const titleTop = 112;
+    titleLines.forEach((line, i) => c.fillText(line, CARD_W / 2, titleTop + i * titleLead));
+
+    const ruleY = titleTop + titleLines.length * titleLead + 6;
+    c.fillStyle = accent;
+    c.fillRect(CARD_W / 2 - 34, ruleY, 68, 4);
+
+    // 効果の説明。下の飾り罫までに収まるところまで文字を縮める。
+    const bodyTop = ruleY + 26;
+    const bodyBottom = CARD_H - 76;
+    let bodySize = 24;
+    let bodyLines: string[] = [];
+    for (; bodySize > 12; bodySize -= 1) {
+      c.font = `500 ${bodySize}px ${BODY}`;
+      bodyLines = wrap(c, description, CARD_W - 64);
+      if (bodyLines.length * bodySize * 1.45 <= bodyBottom - bodyTop) break;
+    }
+    c.fillStyle = INK;
+    c.font = `500 ${bodySize}px ${BODY}`;
+    const bodyLead = bodySize * 1.45;
+    // 説明は残りの面の中央に置く。上に寄せると下半分が間延びして見えるため。
+    const bodyStart = (bodyTop + bodyBottom) / 2 - ((bodyLines.length - 1) * bodyLead) / 2;
+    bodyLines.forEach((line, i) => c.fillText(line, CARD_W / 2, bodyStart + i * bodyLead));
 
     c.fillStyle = accent;
     c.fillRect(CARD_W / 2 - 40, CARD_H - 62, 80, 6);

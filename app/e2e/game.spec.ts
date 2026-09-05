@@ -99,3 +99,46 @@ test('names a bought property, then wipes it clean on bankruptcy', async ({ page
   await expect(page.locator('.world-directory')).toContainText('せんべろ屋 二号店');
   expect(errors).toEqual([]);
 });
+
+/**
+ * 出目を常に1と1にしておき、ゲーム開始から2マス進んで
+ * 「共同基金カード」のマスでカードを1枚引かせる。
+ */
+async function drawFirstCard(page: import('@playwright/test').Page, flat: boolean) {
+  await page.addInitScript(() => {
+    Math.random = () => 0.05;
+    localStorage.setItem('nomopoly-3d-muted', '1');
+  });
+  await page.goto('/');
+  await page.getByPlaceholder('プレイヤー1の名前').fill('あき');
+  await page.getByRole('button', { name: 'ゲーム開始', exact: true }).click();
+  await expect(page.getByText('街の灯りをつけています…')).toHaveCount(0);
+  if (flat) await page.getByRole('button', { name: '平面表示', exact: true }).click();
+  await page.getByRole('button', { name: 'サイコロを振る', exact: true }).click();
+  await page.getByRole('button', { name: 'ストップ!', exact: true }).click();
+  await page.getByRole('button', { name: '2マス進む', exact: true }).click();
+  // 着地の通知を送ると、カードを引く通知に変わる
+  await expect(page.locator('.notice-card__title')).toHaveText('共同基金カード');
+  await page.locator('.notice-overlay').click();
+}
+
+test('prints the drawn card effect on the 3D card instead of a popup', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await drawFirstCard(page, false);
+  // 効果はカード面に刷り込まれている。盤を隠す説明のポップアップは出さない。
+  await expect(page.locator('.notice-overlay--bare')).toBeVisible();
+  await expect(page.locator('.notice-card')).toHaveCount(0);
+  await expect(page.locator('.world-waiting')).toHaveText('カードを読んだらタップして次へ');
+  expect(errors).toEqual([]);
+});
+
+test('keeps the card effect popup in the flat view', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await drawFirstCard(page, true);
+  // 平面表示にはカードの3D演出がないので、これまで通り説明をポップアップで出す
+  await expect(page.locator('.notice-card__detail')).toBeVisible();
+  await expect(page.locator('.notice-overlay--bare')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
