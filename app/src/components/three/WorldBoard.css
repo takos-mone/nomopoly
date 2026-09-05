@@ -202,3 +202,34 @@
   .world-camera-controls button { font-size: 10px; padding: 5px 8px; box-shadow: 0 2px 0 var(--line); }
   .world-camera-controls__drag { margin-left: 0; }
 }
+
+/*
+ * 全画面プレイ。盤だけを画面いっぱいに出して、周りのUIを隠す。
+ * モーダル(100)や通知(120)より下に置き、飲み確認やカードは今までどおり前に出す。
+ */
+body.is-immersive { overflow: hidden; }
+body.is-immersive .app-header,
+body.is-immersive .app-layout__sidebar { display: none; }
+
+.world-board--immersive {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+}
+.world-board--immersive .world-toolbar { border-bottom-width: 2px; }
+/* 残りの高さを全部ビューポートに渡す */
+.world-board--immersive .world-viewport { flex: 1 1 auto; height: auto; min-height: 0; }
+/* 一覧は畳んでいても場所を取るので、全画面では出さない */
+.world-board--immersive .world-directory { display: none; }
+.world-toolbar__immersive { white-space: nowrap; }
+.world-toolbar__immersive[aria-pressed="true"] { background: var(--noren); color: #fff; }
+
+@media (max-width: 600px) {
+  .world-toolbar__immersive { font-size: 10px; padding: 6px 8px; }
+}

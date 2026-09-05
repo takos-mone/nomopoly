@@ -28,6 +28,15 @@ test('plays in 3D, inspects a property, switches views, and resumes its independ
   await page.locator('.world-directory button').nth(1).click();
   await expect(page.locator('.modal-box')).toBeVisible();
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  // 全画面プレイ: 盤だけが残り、ヘッダーとサイドバーは隠れる
+  await page.getByRole('button', { name: /⛶ 全画面/ }).click();
+  await expect(page.locator('.world-board--immersive')).toBeVisible();
+  await expect(page.locator('.app-header')).toBeHidden();
+  await expect(page.locator('.app-layout__sidebar')).toBeHidden();
+  await page.getByRole('button', { name: /全画面をやめる/ }).click();
+  await expect(page.locator('.world-board--immersive')).toHaveCount(0);
+  await expect(page.locator('.app-header')).toBeVisible();
+
   await page.getByRole('button', { name: '平面表示', exact: true }).click();
   await expect(page.locator('.board-square')).toHaveCount(40);
   await page.getByRole('button', { name: '3D表示', exact: true }).click();

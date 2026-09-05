@@ -33,6 +33,12 @@ export function GameBoard(props: BoardProps) {
    */
   const [exploring, setExploring] = useState(false);
   const [recenterKey, setRecenterKey] = useState(0);
+  /**
+   * 盤だけを画面いっぱいに出して遊ぶモード。
+   * ブラウザの全画面APIも併用するが、iPhone の Safari は要素の全画面に対応しないので、
+   * CSS 側だけでも成立するようにしてある。
+   */
+  const [immersive, setImmersive] = useState(false);
   const current = props.state.players[props.state.currentPlayerIndex];
   const tokenPosition = props.visualPositions[current?.id] ?? current?.position ?? 0;
 
@@ -47,13 +53,59 @@ export function GameBoard(props: BoardProps) {
   useEffect(() => {
     setExploring(false);
   }, [actionSignal]);
+
+  useEffect(() => {
+    document.body.classList.toggle("is-immersive", immersive);
+    return () => document.body.classList.remove("is-immersive");
+  }, [immersive]);
+
+  // ブラウザ側の全画面が Esc などで解けたら、こちらの状態も合わせる
+  useEffect(() => {
+    const sync = () => {
+      if (!document.fullscreenElement) setImmersive(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImmersive(false);
+    };
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const toggleImmersive = () => {
+    const next = !immersive;
+    setImmersive(next);
+    // 全画面APIは対応していない環境もある。失敗してもCSS側で画面いっぱいになる。
+    void (async () => {
+      try {
+        if (next) await document.documentElement.requestFullscreen?.();
+        else if (document.fullscreenElement) await document.exitFullscreen();
+      } catch {
+        // 非対応・拒否されても表示は成立するので無視する
+      }
+    })();
+  };
   const fallback = <div className="world-fallback" role="status">3D表示を開始できませんでした。<button onClick={() => setFlat(true)}>平面表示で続ける</button></div>;
   return (
-    <section className="world-board" aria-label="飲もポリーのゲーム盤面">
+    <section
+      className={immersive ? "world-board world-board--immersive" : "world-board"}
+      aria-label="飲もポリーのゲーム盤面"
+    >
       <div className="world-toolbar">
         <div><span className="world-eyebrow">NIGHT WALK</span><strong>夜の街めぐり</strong></div>
         <span className="world-turn">TURN {props.state.turn}</span>
         <button onClick={() => setFlat(!flat)}>{flat ? "3D表示" : "平面表示"}</button>
+        <button
+          className="world-toolbar__immersive"
+          aria-pressed={immersive}
+          onClick={toggleImmersive}
+          title={immersive ? "全画面をやめる" : "盤だけを画面いっぱいに出す"}
+        >
+          {immersive ? "✕ 全画面をやめる" : "⛶ 全画面"}
+        </button>
       </div>
       {flat ? <Board {...props} /> : <>
         <div className="world-viewport" data-testid="world-viewport">
