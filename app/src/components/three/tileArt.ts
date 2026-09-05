@@ -573,3 +573,33 @@ export function diceFaceTexture(value: number): CanvasTexture {
     }
   });
 }
+
+/**
+ * 盤の外に並べるビルの壁。
+ * 無地の箱だとコンクリートの塊に見えてしまうので、窓の格子を描いて街並みにする。
+ * 建物ごとに縦横の繰り返し数だけ変えるため、返したテクスチャは複製して使う。
+ */
+export function buildingFacadeTexture(wall: string): CanvasTexture {
+  return texture(`facade:${wall}`, (c) => {
+    const W = RES;
+    const H = RES;
+    c.fillStyle = wall;
+    c.fillRect(0, 0, W, H);
+
+    const cols = 3;
+    const rows = 4;
+    const cw = W / cols;
+    const ch = H / rows;
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        // 決まった並びで明かりを散らす(乱数だと再描画のたびに変わる)
+        const lit = (row * 7 + col * 5) % 3 !== 0;
+        c.fillStyle = lit ? "#ffca77" : "#3b3733";
+        c.fillRect(col * cw + cw * 0.22, row * ch + ch * 0.2, cw * 0.56, ch * 0.44);
+      }
+      // 階の見切り
+      c.fillStyle = "#00000022";
+      c.fillRect(0, (row + 1) * ch - 3, W, 3);
+    }
+  });
+}

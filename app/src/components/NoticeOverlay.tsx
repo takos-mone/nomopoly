@@ -1,6 +1,6 @@
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
+import { IDLE_DICE, type DiceView } from "./three/Dice3D";
 import { useEffect, useState } from "react";
-import { Dice } from "./Dice";
 import { Illustration, type Pose } from "./Illustration";
 import { OwnableSquareFacts } from "./PropertySummary";
 import { describeSquare } from "../logic/squareInfo";
@@ -18,6 +18,8 @@ interface NoticeOverlayProps {
   notice: Notice;
   state: GameState;
   onDismiss: () => void;
+  /** 交通マスのサイコロを3D側でも振るための通知 */
+  onDiceViewChange: (view: DiceView) => void;
 }
 
 const PILE_LABEL = {
@@ -106,7 +108,7 @@ function noticePlayerId(notice: Notice): number | null {
   return notice.kind === "card" ? null : notice.playerId;
 }
 
-export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) {
+export function NoticeOverlay({ notice, state, onDismiss, onDiceViewChange }: NoticeOverlayProps) {
   const body = buildBody(notice, state);
   // 着地マスが所有可能(土地・コンビニ・交通)なら、一言の説明ではなく
   // 所有者・購入価格・改装費・訪問時に飲む量までまとめて出す。
@@ -139,6 +141,18 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
     return () => clearTimeout(timer);
   }, [teasing, isCoin, isUtilityDice, notice]);
 
+  // 交通マスは1個だけ振る。盤の上の3Dサイコロと、めくりのタイミングを合わせる。
+  useEffect(() => {
+    if (notice.kind !== "utilityDice") {
+      onDiceViewChange(IDLE_DICE);
+      return;
+    }
+    onDiceViewChange(
+      revealed ? { rolling: false, count: 1, result: [notice.dieRoll] } : { rolling: true, count: 1, result: null },
+    );
+    return () => onDiceViewChange(IDLE_DICE);
+  }, [notice, revealed, onDiceViewChange]);
+
   /** 焦らし中のタップは「早送り」。結果が出てからのタップで次へ進む */
   const handleActivate = () => {
     if (teasing && !revealed) {
@@ -153,7 +167,7 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
   if (notice.kind === "utilityDice" && !revealed) {
     return (
       <div
-        className="notice-overlay"
+        className="notice-overlay notice-overlay--compact"
         role="button"
         tabIndex={0}
         onClick={handleActivate}
@@ -162,7 +176,6 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
         }}
       >
         <div className="notice-utility-dice">
-          <Dice value={notice.dieRoll} spinning />
           <span className="notice-coin__hint">{notice.squareName}のサイコロを振っています…</span>
         </div>
       </div>
@@ -211,7 +224,8 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
 
   return (
     <div
-      className="notice-overlay"
+      // 交通の出目は3Dのサイコロが主役なので、盤を隠さないコンパクト表示にする
+      className={isUtilityDice ? "notice-overlay notice-overlay--compact" : "notice-overlay"}
       role="button"
       tabIndex={0}
       onClick={handleActivate}
@@ -223,13 +237,7 @@ export function NoticeOverlay({ notice, state, onDismiss }: NoticeOverlayProps) 
         {teasing && <div className="notice-card__burst" aria-hidden="true" />}
         <span className="notice-card__tag">{body.tag}</span>
         <Illustration pose={poseFor(notice)} size={104} className="illustration--notice" />
-        {notice.kind === "utilityDice" ? (
-          <div className="notice-card__dice">
-            <Dice value={notice.dieRoll} spinning={false} landed />
-          </div>
-        ) : (
-          <div className="notice-card__icon">{body.icon}</div>
-        )}
+        {notice.kind === "utilityDice" ? null : <div className="notice-card__icon">{body.icon}</div>}
         <h3 className="notice-card__title">{body.title}</h3>
         {propertyFactsSquare ? (
           <div className="notice-card__property">

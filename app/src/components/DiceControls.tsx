@@ -3,7 +3,7 @@ import { playDiceLand, playDiceTick, playPurchase } from "../logic/sound";
 import { JAIL_ESCAPE_COST, type GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Dice } from "./Dice";
-import type { DiceView } from "./three/Dice3D";
+import { IDLE_DICE, type DiceView } from "./three/Dice3D";
 import { Illustration } from "./Illustration";
 
 interface DiceControlsProps {
@@ -44,8 +44,9 @@ export function DiceControls({ state, dispatch, turnPhase, onDiceViewChange }: D
   // 3D側は出目を持たないので、ここで確定した内容をそのまま渡す。
   // このパネルは通知が出ている間などに外されるため、消えるときは必ず片付ける。
   useEffect(() => {
-    onDiceViewChange({ rolling, result: rolledDice });
-    return () => onDiceViewChange({ rolling: false, result: null });
+    // 移動のサイコロは常に2個
+    onDiceViewChange({ rolling, count: 2, result: rolledDice });
+    return () => onDiceViewChange(IDLE_DICE);
   }, [rolling, rolledDice, onDiceViewChange]);
 
   useEffect(() => {

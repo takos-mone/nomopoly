@@ -1,7 +1,7 @@
-import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
-import { Group, MOUSE, MeshStandardMaterial, NoToneMapping, TOUCH, Vector3 } from "three";
+import { Group, MOUSE, MeshStandardMaterial, NoToneMapping, RepeatWrapping, TOUCH, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { COLOR_GROUP_HEX } from "../../data/board";
 import { PLAYER_COLORS } from "../../data/playerColors";
@@ -10,7 +10,14 @@ import { BoardEffectLayer, PilePop, ShakeGroup, useBoardEffects, type PilePulse 
 import { Dice3D } from "./Dice3D";
 import type { BoardProps, CameraMode } from "./GameBoard";
 import { PlayerStands } from "./PlayerStands";
-import { centerLogoTexture, chancePileTexture, tileFaceColor, tileFaceTexture, whenTileFontsReady } from "./tileArt";
+import {
+  buildingFacadeTexture,
+  centerLogoTexture,
+  chancePileTexture,
+  tileFaceColor,
+  tileFaceTexture,
+  whenTileFontsReady,
+} from "./tileArt";
 import { SHOP_OFFSET, TILE_SIZE, TILE_TOP, outwardDirection, sideRotation, worldPosition } from "./worldLayout";
 
 /* 飲もポリーの盤(index.css の :root)と同じ色を 3D 側でも使う。
@@ -33,6 +40,11 @@ const ROOF = "#3c3a3a";
 const LAMP = "#ffc46b";
 const STONE = "#8f8577";
 const MUTED = "#a7a099";
+/** 盤の台座より外側の地面の高さ */
+const GROUND_Y = -0.6;
+/** 盤の外は街の舗装。緑地だと公園に見えて街並みと合わない。 */
+const PAVEMENT = "#605a52";
+const PAVEMENT_EDGE = "#8a8177";
 
 /** 建物本体は自然な街並みの色。所有者は屋根と旗、色グループは看板・のれんで示す。 */
 const BODY_PALETTE = ["#dcbc90", "#c9a074", "#e2cba8", "#c08f68", "#d5b088"];
@@ -587,53 +599,119 @@ function CenterPiece({ pilePulse }: { pilePulse: PilePulse | null }) {
 
 /* --- 盤の外の景色 --- */
 
-function Tree({ x, z, scale = 1 }: { x: number; z: number; scale?: number }) {
-  return (
-    <group position={[x, -0.2, z]} scale={scale}>
-      <Box position={[0, 0.32, 0]} size={[0.15, 0.64, 0.15]} color={WOOD_DARK} />
-      <mesh position={[0, 1.0, 0]} castShadow>
-        <icosahedronGeometry args={[0.56, 0]} />
-        <meshStandardMaterial color={MATCHA} flatShading roughness={0.9} />
-      </mesh>
-      <mesh position={[0.1, 1.42, 0.05]} castShadow>
-        <icosahedronGeometry args={[0.38, 0]} />
-        <meshStandardMaterial color="#79b585" flatShading roughness={0.9} />
-      </mesh>
-    </group>
-  );
+/**
+ * 盤の外の街並み。
+ *
+ * 以前は木と丘を置いていたが、プレイヤーの屋台(半径 12.8 の輪)に重なって
+ * 5人以上だと看板が隠れてしまった。建物はすべて屋台の輪より外側に置き、
+ * 手前を空けて奥にビル群を並べる。
+ */
+
+/** ここより内側には何も建てない(屋台とその看板の領域) */
+const CITY_INNER = 15.6;
+
+interface CityBlock {
+  /** 0:+z 1:+x 2:-z 3:-x の辺 */
+  side: number;
+  /** 辺に沿った位置(-1〜1) */
+  along: number;
+  /** 盤からの距離 */
+  depth: number;
+  width: number;
+  height: number;
+  color: string;
+  /** ネオンの帯を入れるか */
+  neon?: string;
 }
 
-function Hill({ x, z, radius, color }: { x: number; z: number; radius: number; color: string }) {
+const CITY_BODIES = ["#6f6a66", "#7d7168", "#5f5b5a", "#8a7d70", "#6a6360"];
+
+/** 手前は低く、奥ほど高くして街の奥行きを出す */
+const CITY: CityBlock[] = [
+  { side: 0, along: -0.72, depth: 0, width: 2.6, height: 3.4, color: CITY_BODIES[0] },
+  { side: 0, along: -0.24, depth: 0, width: 2.2, height: 4.6, color: CITY_BODIES[1], neon: NOREN },
+  { side: 0, along: 0.26, depth: 0, width: 2.8, height: 3.0, color: CITY_BODIES[2] },
+  { side: 0, along: 0.74, depth: 0, width: 2.4, height: 5.2, color: CITY_BODIES[3] },
+  { side: 0, along: -0.5, depth: 4.6, width: 3.2, height: 7.4, color: CITY_BODIES[4] },
+  { side: 0, along: 0.5, depth: 4.6, width: 3.0, height: 6.2, color: CITY_BODIES[0], neon: GOLD },
+
+  { side: 1, along: -0.7, depth: 0, width: 2.4, height: 4.2, color: CITY_BODIES[2] },
+  { side: 1, along: -0.2, depth: 0, width: 2.6, height: 3.2, color: CITY_BODIES[3] },
+  { side: 1, along: 0.3, depth: 0, width: 2.2, height: 5.0, color: CITY_BODIES[1], neon: GOLD },
+  { side: 1, along: 0.78, depth: 0, width: 2.8, height: 3.6, color: CITY_BODIES[4] },
+  { side: 1, along: 0, depth: 4.6, width: 3.4, height: 8.2, color: CITY_BODIES[2] },
+  { side: 1, along: 0.72, depth: 4.6, width: 2.8, height: 6.6, color: CITY_BODIES[0] },
+
+  { side: 2, along: -0.74, depth: 0, width: 2.8, height: 5.4, color: CITY_BODIES[1], neon: NOREN },
+  { side: 2, along: -0.26, depth: 0, width: 2.4, height: 3.4, color: CITY_BODIES[4] },
+  { side: 2, along: 0.24, depth: 0, width: 2.6, height: 4.4, color: CITY_BODIES[0] },
+  { side: 2, along: 0.72, depth: 0, width: 2.2, height: 3.0, color: CITY_BODIES[3] },
+  { side: 2, along: -0.4, depth: 4.6, width: 3.2, height: 7.0, color: CITY_BODIES[2] },
+  { side: 2, along: 0.5, depth: 4.6, width: 3.0, height: 8.8, color: CITY_BODIES[1] },
+
+  { side: 3, along: -0.76, depth: 0, width: 2.6, height: 3.8, color: CITY_BODIES[0] },
+  { side: 3, along: -0.28, depth: 0, width: 2.2, height: 5.6, color: CITY_BODIES[2], neon: NOREN },
+  { side: 3, along: 0.22, depth: 0, width: 2.8, height: 3.2, color: CITY_BODIES[4] },
+  { side: 3, along: 0.7, depth: 0, width: 2.4, height: 4.8, color: CITY_BODIES[1] },
+  { side: 3, along: -0.5, depth: 4.6, width: 3.0, height: 6.8, color: CITY_BODIES[3] },
+  { side: 3, along: 0.45, depth: 4.6, width: 3.4, height: 7.8, color: CITY_BODIES[0], neon: GOLD },
+];
+
+function cityPlacement(block: CityBlock): { position: [number, number, number]; rotation: number } {
+  const out = CITY_INNER + block.depth;
+  const along = block.along * 17;
+  if (block.side === 0) return { position: [along, GROUND_Y, out], rotation: Math.PI };
+  if (block.side === 1) return { position: [out, GROUND_Y, -along], rotation: -Math.PI / 2 };
+  if (block.side === 2) return { position: [-along, GROUND_Y, -out], rotation: 0 };
+  return { position: [-out, GROUND_Y, along], rotation: Math.PI / 2 };
+}
+
+function CityBuilding({ block }: { block: CityBlock }) {
+  const { position, rotation } = cityPlacement(block);
+  const depth = block.width * 0.8;
+  // 壁の絵柄は共有し、建物ごとに繰り返し数だけ変える(共有したまま変えると全部に効いてしまう)
+  const facade = useMemo(() => {
+    const base = buildingFacadeTexture(block.color);
+    const tex = base.clone();
+    tex.needsUpdate = true;
+    tex.wrapS = RepeatWrapping;
+    tex.wrapT = RepeatWrapping;
+    tex.repeat.set(Math.max(1, Math.round(block.width / 1.3)), Math.max(1, Math.round(block.height / 2.2)));
+    return tex;
+  }, [block.color, block.width, block.height]);
+
   return (
-    <mesh position={[x, -0.5, z]} castShadow receiveShadow>
-      <icosahedronGeometry args={[radius, 0]} />
-      <meshStandardMaterial color={color} flatShading roughness={0.95} />
-    </mesh>
+    <group position={position} rotation={[0, rotation, 0]}>
+      <mesh position={[0, block.height / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[block.width, block.height, depth]} />
+        {[0, 1, 2, 3, 4, 5].map((i) =>
+          // 2 は上面(屋上)。ここだけ窓を貼らない
+          i === 2 ? (
+            <meshStandardMaterial key={i} attach={`material-${i}`} color={ROOF} roughness={0.85} />
+          ) : (
+            <meshStandardMaterial key={i} attach={`material-${i}`} map={facade} roughness={0.85} />
+          ),
+        )}
+      </mesh>
+      <mesh position={[0, block.height + 0.12, 0]} castShadow>
+        <boxGeometry args={[block.width * 1.06, 0.24, depth * 1.06]} />
+        <meshStandardMaterial color={ROOF} roughness={0.8} />
+      </mesh>
+      {block.neon && (
+        <mesh position={[block.width * 0.42, block.height * 0.6, -depth / 2 - 0.08]}>
+          <boxGeometry args={[0.2, block.height * 0.5, 0.14]} />
+          <meshStandardMaterial color={block.neon} emissive={block.neon} emissiveIntensity={0.8} roughness={0.4} />
+        </mesh>
+      )}
+    </group>
   );
 }
 
 function Scenery() {
   return (
     <group>
-      <Hill x={-13.6} z={-12.4} radius={3.2} color="#7fae86" />
-      <Hill x={13.9} z={-13.4} radius={2.5} color="#6ea277" />
-      <Hill x={-14.4} z={12.8} radius={2.2} color="#88b78d" />
-      <Hill x={14.2} z={13.2} radius={2.9} color="#7fae86" />
-      {[
-        [-11.4, -6.2],
-        [-11.7, 0.6],
-        [-11.2, 6.9],
-        [11.5, -6.7],
-        [11.8, 0.2],
-        [11.3, 6.5],
-        [-6.4, 11.6],
-        [0.4, 11.9],
-        [6.6, 11.4],
-        [-6.6, -11.5],
-        [0.2, -11.8],
-        [6.8, -11.3],
-      ].map(([x, z], i) => (
-        <Tree key={`${x}:${z}`} x={x} z={z} scale={0.85 + (i % 3) * 0.18} />
+      {CITY.map((block, i) => (
+        <CityBuilding key={i} block={block} />
       ))}
     </group>
   );
@@ -711,8 +789,12 @@ function CameraRig({
   const azimuthOffset = useRef(0);
   /** 操作中はこちらからカメラに触らない。触ると引っ張り合いになる。 */
   const dragging = useRef(false);
+  // ドラッグ終了時に「いまどのマスを見ていたか」を参照するための控え。
+  // 描画中に書くとレンダーの副作用になるので、描画後に反映する。
   const targetIdRef = useRef(targetId);
-  targetIdRef.current = targetId;
+  useEffect(() => {
+    targetIdRef.current = targetId;
+  }, [targetId]);
 
   /**
    * 初期配置はフレームループの中で行う。
@@ -841,8 +923,8 @@ function Town(props: SceneProps) {
   useEffect(() => whenTileFontsReady(redraw), []);
   return (
     <>
-      <color attach="background" args={["#f2ddb8"]} />
-      <fog attach="fog" args={["#f2ddb8", 46, 88]} />
+      <color attach="background" args={["#e8d2ac"]} />
+      <fog attach="fog" args={["#e8d2ac", 50, 96]} />
       {/* three.js の物理ライティングでは拡散反射に 1/π が掛かる。
           上向き面の合計が (1.05 + 0.72)/π + 1.65*0.81/π ≒ 0.97 になり、
           クリーム地は白飛びせず明るく、色帯と芝は彩度を保つ。 */}
@@ -861,7 +943,9 @@ function Town(props: SceneProps) {
       />
       <ShakeGroup shakeKey={shakeKey}>
         {/* 芝生 → 砂色の台座 → 金のトリム → 黒い盤下地。マスのすき間から黒地が覗いて罫線に見える。 */}
-        <Box size={[44, 1.0, 44]} position={[0, -1.1, 0]} color={MATCHA_DARK} receiveShadow />
+        <Box size={[52, 1.0, 52]} position={[0, -1.1, 0]} color={PAVEMENT} receiveShadow />
+        {/* 台座のまわりの歩道。盤と街の境目をはっきりさせる */}
+        <Box size={[26, 0.12, 26]} position={[0, -0.56, 0]} color={PAVEMENT_EDGE} receiveShadow />
         <Box size={[20.6, 0.8, 20.6]} position={[0, -0.42, 0]} color="#f7e6c8" receiveShadow />
         <Box size={[18.0, 0.24, 18.0]} position={[0, -0.04, 0]} color={GOLD} metalness={0.3} roughness={0.45} />
         <Box size={[17.3, 0.28, 17.3]} position={[0, 0.0, 0]} color={INK} receiveShadow />

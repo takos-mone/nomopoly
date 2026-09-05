@@ -18,7 +18,7 @@ import { useTokenAnimation } from "./hooks/useTokenAnimation";
 import { clearSavedGame, saveGame } from "./logic/persistence";
 import { isMuted, playClick, playElimination, playTurnStart, setMuted } from "./logic/sound";
 import { createInitialState, gameReducer } from "./state/gameReducer";
-import type { DiceView } from "./components/three/Dice3D";
+import { IDLE_DICE, type DiceView } from "./components/three/Dice3D";
 import "./App.css";
 import "./world.css";
 
@@ -45,7 +45,7 @@ function App() {
   // 手番が変わった瞬間だけ true。盤面のパネルをスライドイン/アウトさせる合図に使う。
   const [turnPhase, setTurnPhase] = useState<"in" | "idle">("idle");
   // 3Dのサイコロに渡す表示状態。出目を決めているのは DiceControls 側。
-  const [diceView, setDiceView] = useState<DiceView>({ rolling: false, result: null });
+  const [diceView, setDiceView] = useState<DiceView>(IDLE_DICE);
 
   useEffect(() => {
     const eliminatedCount = state.players.filter((p) => p.eliminated).length;
@@ -171,8 +171,11 @@ function App() {
     <>
       <header className="app-header">
         <h1 className="app-header__logo">
-          <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt="飲もポリー" />
-          <small>3D</small>
+          {/* ゲーム中はキャラクターの絵は出さず、看板から NOMOPOLY の文字だけを切り出す */}
+          <span className="app-header__wordmark">
+            <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt="飲もポリー" />
+          </span>
+          <em className="app-header__threed">3D</em>
         </h1>
         <span className="app-header__subtitle">街をめぐる、夜がはじまる。</span>
         <div className="app-header__buttons">
@@ -272,7 +275,9 @@ function App() {
         />
       )}
 
-      {activeNotice && <NoticeOverlay notice={activeNotice} state={state} onDismiss={dismissNotice} />}
+      {activeNotice && (
+        <NoticeOverlay notice={activeNotice} state={state} onDismiss={dismissNotice} onDiceViewChange={setDiceView} />
+      )}
       {!busy && !noticesBlocking && state.pendingChoice && (
         <TargetChoiceModal state={state} dispatch={dispatch} />
       )}

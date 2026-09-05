@@ -79,12 +79,16 @@ export function GameBoard(props: BoardProps) {
               {dragPan ? "✋ 移動" : "🔄 回転"}
             </button>
           </div>
+          {/* 操作パネルは盤の上に重ねる。下に置くと視線が盤から外れ、
+              スマホでは盤そのものが押し出されて見えなくなるため。 */}
+          <div className="world-action-overlay">
+            {props.overlay ?? <p className="world-waiting" role="status">街を移動中、またはイベントを確認中です</p>}
+          </div>
           <p className="world-gesture">
             {`ドラッグで${dragPan ? "移動" : "回転"} · 2本指で拡大・移動 · 建物をタップ`}
           </p>
         </div>
         <div className="world-location"><span>現在のプレイヤー</span><strong>{current?.name}</strong><span>{props.state.squares[current?.position]?.name}</span></div>
-        <div className="world-action-dock">{props.overlay ?? <p className="world-waiting" role="status">街を移動中、またはイベントを確認中です</p>}</div>
       </>}
       <details className="world-directory">
         <summary>マス・物件の一覧 <span>全40マス</span></summary>

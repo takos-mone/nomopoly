@@ -108,19 +108,50 @@
 .world-location > span:first-child { font-size: 9px; color: var(--ink-soft); }
 .world-location strong { color: var(--noren); }
 
-.world-action-dock { min-height: 100px; padding: 16px; display: grid; place-items: center; }
-.world-action-dock .board-overlay {
-  position: static;
-  width: 100%;
-  max-width: 520px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
+/* 盤の上に重ねる操作パネル。盤を隠しすぎないよう下端に小さくまとめる。 */
+.world-action-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  z-index: 15;
+  display: flex;
+  justify-content: center;
+  padding: 0 10px;
+  /* 枠自体はカメラ操作を邪魔しない。中のパネルだけ触れるようにする。 */
+  pointer-events: none;
 }
-.world-action-dock .board-overlay__title { color: var(--ink); }
-.world-waiting { font-size: 12px; color: var(--ink-soft); }
+.world-action-overlay > * { pointer-events: auto; }
+
+.world-action-overlay .board-overlay {
+  position: static;
+  width: auto;
+  max-width: min(460px, 100%);
+  margin: 0;
+  padding: 10px 16px 12px;
+  background: #fffdf7f2;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-strong);
+  backdrop-filter: blur(2px);
+}
+.world-action-overlay .board-overlay__title { color: var(--ink); font-size: 15px; margin: 0 0 6px; }
+/* 出目は盤の上の3Dサイコロが大きく見せるので、パネル側の2Dサイコロは出さない。
+   合計だけ残して、パネルを小さく保つ。 */
+.world-action-overlay .dice-tray { margin: 0 0 8px; gap: 8px; }
+.world-action-overlay .dice-face { display: none; }
+.world-action-overlay .dice-tray__total { font-size: 17px; }
+.world-action-overlay .dice-actions { gap: 6px; }
+.world-action-overlay .dice-actions button { padding: 9px 16px; font-size: 14px; }
+.world-action-overlay .illustration--panel { display: none; }
+.world-waiting {
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: #fffdf7d9;
+  border-radius: 999px;
+  padding: 5px 12px;
+  margin: 0;
+}
 
 .world-directory { border-top: 3px solid var(--line); background: var(--paper); }
 .world-directory summary { padding: 14px 18px; cursor: pointer; font-size: 13px; font-weight: 700; }

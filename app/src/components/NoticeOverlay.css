@@ -450,3 +450,27 @@
   .notice-card--elimination { animation: none; }
   .notice-card--gain::after { display: none; }
 }
+
+/*
+ * 盤を隠さない通知。
+ * 交通マスの出目は3Dのサイコロが盤の上で見せるので、
+ * 背景を暗くせず、カードを下端に小さく寄せる。
+ */
+.notice-overlay--compact {
+  align-items: flex-end;
+  background: none;
+  backdrop-filter: none;
+  padding: 0 12px 14px;
+}
+.notice-overlay--compact .notice-card,
+.notice-overlay--compact .notice-utility-dice {
+  max-width: 340px;
+  padding: 12px 16px 10px;
+  border-radius: 16px;
+  background: #fffdf7f2;
+  border: 2px solid var(--line);
+  box-shadow: var(--shadow-strong);
+}
+.notice-overlay--compact .notice-card__title { font-size: 17px; margin: 2px 0 4px; }
+.notice-overlay--compact .illustration--notice { display: none; }
+.notice-overlay--compact .notice-utility-dice { display: block; text-align: center; }

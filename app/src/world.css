@@ -20,21 +20,36 @@
   box-shadow: none;
   border-radius: 0;
 }
-.app-header__logo img {
+/* 看板画像から NOMOPOLY のロゴ部分だけを切り出して使う */
+.app-header__wordmark {
   display: block;
-  height: 64px;
-  width: auto;
+  position: relative;
+  width: 216px;
+  height: 43px;
+  overflow: hidden;
   border: 3px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 3px 0 var(--line);
 }
-.app-header__logo small {
-  font: 800 11px var(--sans);
-  letter-spacing: 0.12em;
+.app-header__wordmark img {
+  position: absolute;
+  width: 361px;
+  height: auto;
+  left: -71px;
+  top: -146px;
+}
+/* 3Dであること自体が今回の売りなので、押し出した立体文字で強調する */
+.app-header__threed {
+  font: 900 30px/1 var(--heading);
+  font-style: normal;
+  letter-spacing: 0.02em;
   color: #fff;
-  background: var(--line);
-  border-radius: 6px;
-  padding: 4px 8px;
+  -webkit-text-stroke: 3px var(--line);
+  paint-order: stroke fill;
+  text-shadow:
+    2px 2px 0 var(--gold),
+    4px 4px 0 var(--gold-dark),
+    6px 6px 0 var(--line);
 }
 .app-layout { max-width: 1440px; width: 100%; padding: 16px 24px 32px; gap: 24px; }
 .app-layout__board { max-width: none; flex: 1 1 640px; }

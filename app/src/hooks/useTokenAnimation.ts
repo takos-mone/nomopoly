@@ -6,6 +6,12 @@ import type { Player } from "../types";
 const HOP_INTERVAL_MS = 280;
 /** 長距離移動でも、これ以上は間延びさせない上限(ms) */
 const MAX_TRAVEL_MS = 1700;
+/**
+ * この歩数から先だけ速める。
+ * サイコロの出目(最大12)では速さが変わらないようにして、
+ * 「大きい目ほど駒が速くなる」不自然さをなくす。カードによる長距離移動だけ縮める。
+ */
+const FAST_TRAVEL_FROM = 20;
 /** 速くしすぎると何マス動いたのか追えなくなるので下限を設ける(ms) */
 const MIN_HOP_INTERVAL_MS = 70;
 /** 足音の最短間隔。高速移動でも連打音にならないようにする */
@@ -14,12 +20,13 @@ const STEP_SOUND_MIN_GAP_MS = 130;
 /**
  * 移動距離に応じた1マスあたりの間隔を決める。
  *
- * 「直帰」でGOまで25マス進むようなカードを基準速度のまま歩かせると7秒かかり、
- * 演出としては長すぎる。距離が伸びるほど1マスを速くして、
- * 全体の所要時間が MAX_TRAVEL_MS 前後に収まるようにする。
+ * サイコロの範囲(2〜12マス)では常に同じ速さで歩かせる。出目が大きいほど
+ * 速くなると、進んだ距離が体感で分からなくなるため。
+ * 「直帰」でGOまで25マス進むようなカードだけは基準速度だと7秒かかって
+ * 間延びするので、そこから先は全体が MAX_TRAVEL_MS 前後に収まるよう縮める。
  */
 function hopIntervalFor(steps: number): number {
-  if (steps <= 0) return HOP_INTERVAL_MS;
+  if (steps < FAST_TRAVEL_FROM) return HOP_INTERVAL_MS;
   return Math.max(MIN_HOP_INTERVAL_MS, Math.min(HOP_INTERVAL_MS, MAX_TRAVEL_MS / steps));
 }
 
