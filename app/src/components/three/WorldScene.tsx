@@ -811,14 +811,16 @@ function CameraRig({
    * 1フレーム目に「既定カメラの仰角」を拾って保持してしまい、狙った画角にならない。
    */
   const pendingReset = useRef(true);
+  // 画面の幅で初期の距離を変えているので、狭い/広いが切り替わったときだけ置き直す。
+  // 幅が変わるたびに戻すと、iPadを回しただけでユーザーの拡大率まで捨ててしまう。
+  const narrow = size.width < 600;
   useEffect(() => {
     pendingReset.current = true;
-  }, [recenterKey, size.width]);
+  }, [recenterKey, narrow]);
 
   const placeCamera = () => {
     const c = controls.current;
     if (!c) return;
-    const narrow = size.width < 600;
     azimuthOffset.current = 0;
     const [x, , z] = worldPosition(targetIdRef.current);
     const [ox, oz] = outwardDirection(targetIdRef.current);
@@ -829,12 +831,27 @@ function CameraRig({
     c.update();
   };
 
-  // 盤に触れた時点で追従をやめる。以降はユーザーの操作だけでカメラが動く。
+  /**
+   * 盤を「実際に動かした」ときだけ追従をやめる。
+   *
+   * 触れた瞬間に切り替えると、店をタップして詳細を見ただけでも
+   * 追従が外れて「コマに戻す」が出てしまう。掴んでいる間は追従を止めておき、
+   * 離した時点で視点が動いていた場合にだけ、見渡しているものとして扱う。
+   */
+  const dragging = useRef(false);
+  const dragStart = useRef(new Vector3());
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
-    const onStart = () => onExplore();
+    const onStart = () => {
+      dragging.current = true;
+      dragStart.current.copy(camera.position);
+    };
     const onEnd = () => {
+      dragging.current = false;
+      // タップと呼べる範囲(ほぼ動いていない)なら、追従したままにする
+      if (camera.position.distanceTo(dragStart.current) < 0.05) return;
+      onExplore();
       // 向けた角度は覚えておき、追従に戻ったときも同じ見え方を保つ
       const [ox, oz] = outwardDirection(targetIdRef.current);
       const offset = camera.position.clone().sub(c.target);
@@ -857,7 +874,8 @@ function CameraRig({
       placeCamera();
       return;
     }
-    if (exploring) return;
+    // 掴んでいる間は追従で引っ張り合わない
+    if (exploring || dragging.current) return;
 
     // 手番の駒を、盤の内側から街並みごしに見る。
     // 距離(ズーム)と仰角はユーザーの操作結果なので書き換えず、方位角と注視点だけ寄せる。
