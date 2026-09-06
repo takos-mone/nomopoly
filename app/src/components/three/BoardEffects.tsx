@@ -73,6 +73,8 @@ export function useBoardEffects(state: GameState): {
   pilePulse: PilePulse | null;
 } {
   const [effects, setEffects] = useState<BoardEffect[]>([]);
+  /** 片付け待ちのタイマー。state の変化で取り消されないよう effect の外に置く。 */
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const [shakeKey, setShakeKey] = useState(0);
   const [pilePulse, setPilePulse] = useState<PilePulse | null>(null);
   const seq = useRef(0);
@@ -170,9 +172,24 @@ export function useBoardEffects(state: GameState): {
 
     setEffects((current) => [...current, ...flushing]);
     const keys = new Set(flushing.map((e) => e.key));
-    const timer = setTimeout(() => setEffects((current) => current.filter((e) => !keys.has(e.key))), LIFETIME_MS);
-    return () => clearTimeout(timer);
+    // 後片付けのタイマーは effect の外(ref)で持つ。
+    // cleanup で消すと、寿命が来る前に次の state 変化が来ただけで片付けが取り消され、
+    // 演出のメッシュが盤の上に永久に残り続ける。
+    const timer = setTimeout(() => {
+      timers.current.delete(timer);
+      setEffects((current) => current.filter((e) => !keys.has(e.key)));
+    }, LIFETIME_MS);
+    timers.current.add(timer);
   }, [state]);
+
+  // 画面を離れるときだけ、走り残ったタイマーを止める
+  useEffect(() => {
+    const running = timers.current;
+    return () => {
+      running.forEach((t) => clearTimeout(t));
+      running.clear();
+    };
+  }, []);
 
   return { effects, shakeKey, pilePulse };
 }

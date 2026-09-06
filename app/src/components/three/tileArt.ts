@@ -42,6 +42,8 @@ export function whenTileFontsReady(redraw: () => void): void {
     fontsPending = false;
     cache.forEach((texture) => texture.dispose());
     cache.clear();
+    cardCache.forEach((texture) => texture.dispose());
+    cardCache.clear();
     redraw();
   });
 }
@@ -622,9 +624,23 @@ const CARD_H = 460;
  */
 const CARD_SCALE = 2;
 
+/**
+ * カード1枚ぶんのテクスチャは 640×920 と大きく、カードは40種類近くある。
+ * 引いたぶんを貯め込むと数十MBのGPUメモリを食い、端末によっては
+ * 描画コンテキストごと落とされる。画面に出るのは常に1枚なので、
+ * 直近の数枚だけ残して古いものは捨てる。
+ */
+const CARD_CACHE_LIMIT = 4;
+const cardCache = new Map<string, CanvasTexture>();
+
 function cardCanvas(key: string, draw: (c: CanvasRenderingContext2D) => void): CanvasTexture {
-  const hit = cache.get(key);
-  if (hit) return hit;
+  const hit = cardCache.get(key);
+  if (hit) {
+    // 使ったものを末尾へ送り、古い順に捨てられるようにする
+    cardCache.delete(key);
+    cardCache.set(key, hit);
+    return hit;
+  }
   const canvas = document.createElement("canvas");
   canvas.width = CARD_W * CARD_SCALE;
   canvas.height = CARD_H * CARD_SCALE;
@@ -634,7 +650,13 @@ function cardCanvas(key: string, draw: (c: CanvasRenderingContext2D) => void): C
   draw(ctx);
   const tex = new CanvasTexture(canvas);
   tex.colorSpace = SRGBColorSpace;
-  cache.set(key, tex);
+  cardCache.set(key, tex);
+  while (cardCache.size > CARD_CACHE_LIMIT) {
+    const oldest = cardCache.keys().next().value;
+    if (oldest === undefined) break;
+    cardCache.get(oldest)?.dispose();
+    cardCache.delete(oldest);
+  }
   return tex;
 }
 

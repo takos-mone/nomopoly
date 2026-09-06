@@ -980,6 +980,31 @@ function Town(props: SceneProps) {
   );
 }
 
+/**
+ * 描画コンテキストが失われたときの復帰。
+ *
+ * iPadなどでメモリが逼迫すると、ブラウザがWebGLのコンテキストを回収することがある。
+ * 既定では失われたきり戻らず、盤が真っ白のままになる。preventDefault で
+ * 復帰を許可しておくと、一瞬ちらつくだけで描き直される。
+ */
+function ContextRecovery() {
+  const { gl, invalidate } = useThree();
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const onLost = (e: Event) => {
+      e.preventDefault();
+    };
+    const onRestored = () => invalidate();
+    canvas.addEventListener("webglcontextlost", onLost);
+    canvas.addEventListener("webglcontextrestored", onRestored);
+    return () => {
+      canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
+    };
+  }, [gl, invalidate]);
+  return null;
+}
+
 export default function WorldScene(props: SceneProps) {
   return (
     <Canvas
@@ -990,6 +1015,7 @@ export default function WorldScene(props: SceneProps) {
       gl={{ antialias: true, powerPreference: "low-power", toneMapping: NoToneMapping }}
       fallback={<p>3D非対応の端末です。平面表示に切り替えてください。</p>}
     >
+      <ContextRecovery />
       <Town {...props} />
     </Canvas>
   );
