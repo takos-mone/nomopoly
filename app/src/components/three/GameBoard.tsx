@@ -62,34 +62,60 @@ export function GameBoard(props: BoardProps) {
     return () => document.body.classList.remove("is-immersive");
   }, [immersive]);
 
-  // ブラウザ側の全画面が Esc などで解けたら、こちらの状態も合わせる
+  /**
+   * ブラウザの全画面は「あればなお良い」おまけとして扱う。
+   *
+   * iOS Safari は全画面のページで文字入力を始めると、偽キーボード対策の警告を出して
+   * 自分から全画面を解除する。店の名前を入力するたびにこれが起きるので、
+   * 入力欄に触れた時点でこちらから先に全画面を降りて警告を出させない。
+   * 盤だけを画面いっぱいに出す表示自体はCSSで成立しているので、見た目は途切れない。
+   */
   useEffect(() => {
-    const sync = () => {
-      if (!document.fullscreenElement) setImmersive(false);
+    if (!immersive) {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+      return;
+    }
+
+    const isTextEntry = (el: EventTarget | null) =>
+      el instanceof HTMLElement &&
+      (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+
+    const onFocusIn = (e: FocusEvent) => {
+      if (isTextEntry(e.target) && document.fullscreenElement) {
+        void document.exitFullscreen().catch(() => {});
+      }
+    };
+    // 入力が終わったあと、次に画面のどこかを触った操作をきっかけに全画面へ戻す。
+    // 全画面の要求はユーザー操作の中でしか通らないため、自動では戻せない。
+    const onPointerDown = (e: PointerEvent) => {
+      if (document.fullscreenElement || isTextEntry(e.target)) return;
+      if (e.target instanceof HTMLElement && e.target.closest(".modal-overlay")) return;
+      void document.documentElement.requestFullscreen?.().catch(() => {});
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setImmersive(false);
     };
-    document.addEventListener("fullscreenchange", sync);
+
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("fullscreenchange", sync);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [immersive]);
 
   const toggleImmersive = () => {
     const next = !immersive;
     setImmersive(next);
     // 全画面APIは対応していない環境もある。失敗してもCSS側で画面いっぱいになる。
-    void (async () => {
-      try {
-        if (next) await document.documentElement.requestFullscreen?.();
-        else if (document.fullscreenElement) await document.exitFullscreen();
-      } catch {
-        // 非対応・拒否されても表示は成立するので無視する
-      }
-    })();
+    if (!next) return;
+    try {
+      void document.documentElement.requestFullscreen?.().catch(() => {});
+    } catch {
+      // 非対応・拒否されても表示は成立するので無視する
+    }
   };
   const fallback = <div className="world-fallback" role="status">3D表示を開始できませんでした。<button onClick={() => setFlat(true)}>平面表示で続ける</button></div>;
   return (
