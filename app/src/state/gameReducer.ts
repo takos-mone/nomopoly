@@ -144,6 +144,34 @@ function ownsFullGroup(state: GameState, playerId: number, colorGroup: string): 
   return groupSquares.every((sq) => state.ownership[sq.id] === playerId);
 }
 
+/**
+ * 指定プレイヤーにぶら下がっている操作待ちを取り消す。
+ *
+ * 自己破産は駒の移動中やカード効果の途中でも押せる(その間サイドバーは操作できる)。
+ * 降りた本人あての飲み確認・指名待ち・交渉・購入・命名をそのままにすると、
+ * 退場したはずの人にポップアップが出続けて進行が噛み合わなくなる。
+ * 本人が関与していない待ち(他人あての飲み確認など)には触れない。
+ */
+function dropPendingFor(state: GameState, playerId: number): GameState {
+  const next = { ...state };
+  if (next.pendingDrink?.playerId === playerId) next.pendingDrink = null;
+  if (next.pendingChoice?.currentPlayerId === playerId) {
+    next.pendingChoice = null;
+    // 指名待ちはカード効果の途中で立つ。残りの効果も本人のものなので一緒に捨てる。
+    next.pendingCardQueue = [];
+    next.pendingCardName = null;
+  }
+  if (next.pendingTrade && (next.pendingTrade.fromPlayerId === playerId || next.pendingTrade.toPlayerId === playerId)) {
+    next.pendingTrade = null;
+  }
+  if (next.pendingPurchase && state.players[state.currentPlayerIndex]?.id === playerId) {
+    next.pendingPurchase = null;
+  }
+  if (next.pendingNaming?.playerId === playerId) next.pendingNaming = null;
+  if (next.pendingCardMove?.playerId === playerId) next.pendingCardMove = null;
+  return next;
+}
+
 function currentPlayer(state: GameState): Player {
   return state.players[state.currentPlayerIndex];
 }
@@ -670,15 +698,14 @@ function baseReducer(state: GameState, action: GameAction): GameState {
     case "DECLARE_BANKRUPTCY": {
       const retired = bankruptPlayer(state, action.playerId);
       if (retired === state) return state;
+      // 降りた人にぶら下がっていた操作待ちはすべて捨てる。
+      // 残すと、降りたはずの本人に飲み確認や指名待ちのポップアップが出続ける。
+      const dropped = dropPendingFor(retired, action.playerId);
       // 降りた本人の手番だったなら、そのまま次の人へ渡す
       const wasCurrent = state.players[state.currentPlayerIndex]?.id === action.playerId;
-      const alive = retired.players.filter((p) => !p.eliminated);
-      if (!wasCurrent || alive.length <= 1) return retired;
-      return advanceToNextPlayer({
-        ...retired,
-        pendingPurchase: null,
-        pendingNaming: null,
-      });
+      const alive = dropped.players.filter((p) => !p.eliminated);
+      if (!wasCurrent || alive.length <= 1) return dropped;
+      return advanceToNextPlayer(dropped);
     }
 
     case "DECLINE_PURCHASE": {

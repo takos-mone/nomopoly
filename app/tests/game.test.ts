@@ -155,4 +155,34 @@ describe('rules changed for the 3D product', () => {
     let state = gameReducer(start(), { type: 'DECLARE_BANKRUPTCY', playerId: 0 });
     expect(gameReducer(state, { type: 'DECLARE_BANKRUPTCY', playerId: 0 })).toEqual(state);
   });
+  // 自己破産は駒の移動中でも押せる(その間サイドバーは操作できる)ため、
+  // 降りた本人あての操作待ちが残るとポップアップが出続けて進行が噛み合わなくなる。
+  it('drops the retired player\'s pending prompts', () => {
+    let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
+    state = dismiss(state);
+    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = dismiss(state);
+    state = gameReducer(state, { type: 'END_TURN' });
+    state = gameReducer(state, { type: 'ROLL_DICE', dice: [1, 2] });
+    state = dismiss(state);
+    expect(state.pendingDrink?.playerId).toBe(1);
+    state = gameReducer(state, { type: 'DECLARE_BANKRUPTCY', playerId: 1 });
+    expect(state.players[1].eliminated).toBe(true);
+    expect(state.pendingDrink).toBeNull();
+  });
+  it('cancels a trade the retired player was part of', () => {
+    let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
+    state = dismiss(state);
+    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = dismiss(state);
+    state = gameReducer(state, {
+      type: 'PROPOSE_TRADE',
+      targetPlayerId: 1,
+      give: { propertyIds: [3], exemptionUnits: 0, taxiTickets: 0 },
+      want: { propertyIds: [], exemptionUnits: 0, taxiTickets: 0 },
+    });
+    expect(state.pendingTrade).not.toBeNull();
+    state = gameReducer(state, { type: 'DECLARE_BANKRUPTCY', playerId: 0 });
+    expect(state.pendingTrade).toBeNull();
+  });
 });

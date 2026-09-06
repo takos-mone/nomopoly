@@ -2,7 +2,7 @@ import type { CardDef, CardEffect, CardTarget } from "../data/cards";
 import { GO_SQUARE_ID, JAIL_SQUARE_ID } from "../data/board";
 import type { GameState } from "../types";
 import { createPendingDrink, pushGain, pushLog, pushNotice } from "./drinkEngine";
-import { GO_PASS_EXEMPTION } from "./rent";
+import { GO_PASS_EXEMPTION, MAX_SHOP_LEVEL } from "./rent";
 
 function ownedCount(state: GameState, playerId: number): number {
   return state.squares.filter((sq) => state.ownership[sq.id] === playerId).length;
@@ -580,8 +580,10 @@ export function applyFreeUpgrade(
   cardName: string,
 ): GameState {
   const square = state.squares[squareId];
-  const newLevel = (state.shopLevel[squareId] ?? 0) + 1;
-  const levelLabel = newLevel >= 5 ? "MAX" : `Lv.${newLevel}`;
+  // 呼び出し側で最大レベルの物件は除いているが、ここでも上限を守る
+  // (超えると賃料表とレベル表示が食い違う)
+  const newLevel = Math.min((state.shopLevel[squareId] ?? 0) + 1, MAX_SHOP_LEVEL);
+  const levelLabel = newLevel >= MAX_SHOP_LEVEL ? "MAX" : `Lv.${newLevel}`;
   const log = pushLog(state.log, state.turn, currentPlayerId, `「${cardName}」で「${square.name}」が無料で${levelLabel}に!`);
   return pushGain(
     { ...state, shopLevel: { ...state.shopLevel, [squareId]: newLevel }, log },
