@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { GameBoard as Board } from "./components/three/GameBoard";
 import { DiceControls } from "./components/DiceControls";
 import { DrinkResolutionModal } from "./components/DrinkResolutionModal";
@@ -102,7 +102,14 @@ function App() {
   // 駒が止まってから少し「ため」を作り、盤面を認識させてから通知を出す。
   const [landingPause, setLandingPause] = useState(false);
   const wasAnimating = useRef(false);
-  useEffect(() => {
+  /**
+   * useEffect ではなく useLayoutEffect で「ため」を立てる。
+   *
+   * useEffect は画面を描いたあとに走るため、駒が着いた瞬間の1フレームだけ
+   * 「移動も終わっていない・ためも始まっていない」状態が描かれてしまい、
+   * 通知や操作パネルが一瞬だけ出て消える(実測63ms)。描く前に立てて塞ぐ。
+   */
+  useLayoutEffect(() => {
     if (isAnimating) {
       wasAnimating.current = true;
       return;
