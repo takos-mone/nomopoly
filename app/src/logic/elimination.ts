@@ -23,7 +23,8 @@ function eliminatePlayer(state: GameState, playerId: number, reason: "threshold"
   // 何番目の脱落かを記録しておく(「脱落が遅い順」の順位付けに使う)
   const order = state.players.filter((p) => p.eliminated).length + 1;
   const players = state.players.map((p) =>
-    p.id === playerId ? { ...p, eliminated: true, eliminatedOrder: order } : p,
+    // 先送りしていた飲みもここで帳消しにする。抜けた人に飲む義務を残さない。
+    p.id === playerId ? { ...p, eliminated: true, eliminatedOrder: order, deferredDrinks: [] } : p,
   );
 
   const ownedSquareIds = state.squares

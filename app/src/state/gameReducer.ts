@@ -809,12 +809,13 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       }
       const mortgages = { ...state.mortgages, [action.squareId]: { debt } };
       const withGain = pushGain(
-        state,
+        { ...state, log },
         playerId,
         "🎫",
         `免除権 +${grant} unit`,
         `${square.name}を抵当に入れた(返済${debt} unit)。`,
       );
+      log = withGain.log;
       if (remaining <= 0) {
         log = pushLog(log, state.turn, playerId, `${reason}を全額免除した!`);
         const next: GameState = { ...withGain, players, mortgages, log, pendingDrink: null };
@@ -889,6 +890,9 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       // 拾っており、別人の先送り分を消化してしまっていた。
       const player = state.players.find((p) => p.id === action.playerId);
       if (!player || action.index < 0 || action.index >= player.deferredDrinks.length) return state;
+      // 脱落・自己破産した人にはもう飲ませない。脱落ラインは「これ以上飲ませない」ための
+      // 仕組みなので、抜けたあとに先送り分を消化させるとその意味がなくなる。
+      if (player.eliminated) return state;
       const amount = player.deferredDrinks[action.index];
       const players = state.players.map((p) =>
         p.id === player.id

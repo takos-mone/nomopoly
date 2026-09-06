@@ -170,6 +170,23 @@ describe('rules changed for the 3D product', () => {
     expect(state.players[1].eliminated).toBe(true);
     expect(state.pendingDrink).toBeNull();
   });
+  // 脱落ラインは「これ以上飲ませない」ための仕組みなので、抜けた人に飲む義務を残さない
+  it('clears the deferred drinks of a player who leaves', () => {
+    let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
+    state = dismiss(state);
+    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = dismiss(state);
+    state = gameReducer(state, { type: 'END_TURN' });
+    state = gameReducer(state, { type: 'ROLL_DICE', dice: [1, 2] });
+    state = dismiss(state);
+    state = gameReducer(state, { type: 'DEFER_DRINK' });
+    expect(state.players[1].deferredDrinks.length).toBe(1);
+    state = gameReducer(state, { type: 'DECLARE_BANKRUPTCY', playerId: 1 });
+    expect(state.players[1].deferredDrinks).toEqual([]);
+    const before = state.players[1].totalUnitsDrunk;
+    state = gameReducer(state, { type: 'RESOLVE_DEFERRED', playerId: 1, index: 0 });
+    expect(state.players[1].totalUnitsDrunk).toBe(before);
+  });
   it('cancels a trade the retired player was part of', () => {
     let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
     state = dismiss(state);

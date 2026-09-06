@@ -63,8 +63,15 @@ export function useTokenAnimation(
   const timers = useRef<Record<number, ReturnType<typeof setTimeout> | null>>({});
   const lastStepSoundAt = useRef(0);
   const snapKey = snapPlayerIds.join(",");
+  /**
+   * 歩いている最中の目的地は、タイマーを張った時点のプレイヤーではなく常に最新を見る。
+   * 古い方を握ったままだと、移動中にもう一度位置が変わったとき古い目的地で歩き終え、
+   * 見た目と実際の位置が食い違ったまま止まってしまう(進行が止まる)。
+   */
+  const latest = useRef(players);
 
   useEffect(() => {
+    latest.current = players;
     const publish = () => setVisualPositions({ ...posRef.current });
 
     const stopTimer = (id: number) => {
@@ -104,8 +111,9 @@ export function useTokenAnimation(
 
       const step = () => {
         const cur = posRef.current[p.id];
-        const target = p.position;
-        if (cur === undefined || cur === target) {
+        const live = latest.current.find((x) => x.id === p.id);
+        const target = live?.position;
+        if (cur === undefined || target === undefined || cur === target) {
           timers.current[p.id] = null;
           return;
         }
