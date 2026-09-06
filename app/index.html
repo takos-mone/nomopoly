@@ -5,7 +5,14 @@
     <link rel="icon" type="image/png" href="./icons/app-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <meta name="theme-color" content="#c8172a" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- iPad/iPhone のホーム画面に追加したとき、Safariの枠なしで開く -->
+    <link rel="apple-touch-icon" href="./icons/app-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="飲もポリー" />
+    <!-- ホーム画面から起動したときに、ノッチや角の内側へ収める -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>飲もポリー 3D</title>
     <meta name="description" content="飲み屋街をめぐる3Dすごろくゲーム「飲もポリー」" />
     <meta property="og:title" content="飲もポリー 3D" />

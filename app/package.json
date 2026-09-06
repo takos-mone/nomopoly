@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/build-sw.mjs",
     "build:single": "tsc -b && SINGLE_FILE=1 vite build --outDir dist-single --emptyOutDir && node scripts/bundle-single.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
