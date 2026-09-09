@@ -3,6 +3,7 @@ import type { GameState } from "../types";
 import { COLOR_GROUP_HEX } from "../data/board";
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 import { squareGridPosition } from "../logic/layout";
+import { BRAND } from "../brand";
 import "./Board.css";
 
 interface BoardProps {
@@ -93,7 +94,7 @@ export function Board({ state, onSelectSquare, visualPositions, overlay }: Board
         );
       })}
       <div className="board-center">
-        <h2>飲もポリー</h2>
+        <h2>{BRAND.name}</h2>
         <p>ターン {state.turn}</p>
         <div className="board-center__piles">
           <div className="board-center__pile board-center__pile--chance">

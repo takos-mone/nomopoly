@@ -9,6 +9,9 @@ import {
 import { clearSavedGame, formatSavedAt, loadGame } from "../logic/persistence";
 import type { EndCondition, GameState } from "../types";
 import { HowToPlayModal } from "./HowToPlayModal";
+import { AdSlot } from "./AdSlot";
+import { LegalModal, type LegalPage } from "./LegalModal";
+import { BRAND } from "../brand";
 
 interface SetupScreenProps {
   onStart: (
@@ -40,6 +43,7 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   const [count, setCount] = useState(4);
   const [names, setNames] = useState<string[]>(["", "", "", "", "", ""]);
   const [showHowTo, setShowHowTo] = useState(false);
+  const [legal, setLegal] = useState<LegalPage | null>(null);
   // 文字列で保持する。数値で持つと入力途中("5"→"50")が即座に丸められて打ちにくいうえ、
   // 空欄(=デフォルトのまま)を表現できないため。
   const [thresholdInput, setThresholdInput] = useState("");
@@ -65,15 +69,19 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   return (
     <div className="setup-screen">
       <div className="world-hero">
-        <h1 className="world-logo">
-          <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt="飲もポリー" />
-          <span>NOMOPOLY 3D</span>
+        <h1 className="world-logo world-logo--type">
+          <span className="world-logo__name">{BRAND.name}</span>
+          <span className="world-logo__latin">
+            {BRAND.latin} <em>{BRAND.edition}</em>
+          </span>
         </h1>
-        <p>サイコロひとつで、今夜の行き先へ。</p>
+        <p>{BRAND.tagline}</p>
         <span className="world-badge">3Dすごろく · 2〜6人 · 同じ端末で遊ぶ</span>
       </div>
       <p className="setup-caution">
         ※ 1 unit の実量は今日の飲み会で自由に決めてください。無理なく、ノンアルコールでも楽しめます。
+        <br />
+        一気飲みはしない、飲めない人に飲ませない。体調をいちばんに。
       </p>
 
       {savedGame && (
@@ -225,7 +233,23 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
         📖 遊び方を見る
       </button>
 
+      <AdSlot slot="setup-footer" placement="setup-footer" />
+
+      <footer className="setup-footer">
+        <button type="button" onClick={() => setLegal("terms")}>
+          利用規約
+        </button>
+        <span aria-hidden="true">·</span>
+        <button type="button" onClick={() => setLegal("privacy")}>
+          プライバシーポリシー
+        </button>
+        <p className="setup-footer__note">
+          20歳未満の飲酒は法律で禁じられています。飲酒運転は絶対にやめましょう。
+        </p>
+      </footer>
+
       {showHowTo && <HowToPlayModal onClose={() => setShowHowTo(false)} />}
+      {legal && <LegalModal page={legal} onClose={() => setLegal(null)} />}
     </div>
   );
 }

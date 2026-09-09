@@ -11,6 +11,7 @@ import { PlayerDetailModal } from "./components/PlayerDetailModal";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { PropertyDetailModal } from "./components/PropertyDetailModal";
 import { SetupScreen } from "./components/SetupScreen";
+import { AgeGate } from "./components/AgeGate";
 import { SquareNamingModal } from "./components/SquareNamingModal";
 import { TargetChoiceModal } from "./components/TargetChoiceModal";
 import { TradeComposerModal, TradeResponseModal } from "./components/TradeModal";
@@ -18,6 +19,8 @@ import { useTokenAnimation } from "./hooks/useTokenAnimation";
 import { clearSavedGame, saveGame } from "./logic/persistence";
 import { isMuted, playClick, playElimination, playTurnStart, setMuted } from "./logic/sound";
 import { createInitialState, gameReducer } from "./state/gameReducer";
+import { BRAND } from "./brand";
+import { hasConfirmedAge } from "./logic/consent";
 import type { CardView } from "./components/three/Card3D";
 import { IDLE_DICE, type DiceView } from "./components/three/Dice3D";
 import "./App.css";
@@ -50,6 +53,8 @@ function App() {
   // 平面表示かどうか。カードの効果を「3Dのカード面」と「ポップアップ」のどちらで
   // 見せるかがこれで変わるため、盤面の中ではなくここで持つ。
   const [flat, setFlat] = useState(false);
+  // 年齢確認。お酒を扱う以上、一般公開では最初に必ず通す。
+  const [ageOk, setAgeOk] = useState(hasConfirmedAge);
 
   useEffect(() => {
     const eliminatedCount = state.players.filter((p) => p.eliminated).length;
@@ -138,6 +143,8 @@ function App() {
     clearSavedGame();
   }, [state]);
 
+  if (!ageOk) return <AgeGate onConfirm={() => setAgeOk(true)} />;
+
   if (state.phase === "setup") {
     return (
       <SetupScreen
@@ -194,8 +201,8 @@ function App() {
     <>
       <header className="app-header">
         <h1 className="app-header__logo">
-          <span className="app-header__wordmark">NOMOPOLY</span>
-          <em className="app-header__threed">3D</em>
+          <span className="app-header__wordmark">{BRAND.latin}</span>
+          <em className="app-header__threed">{BRAND.edition}</em>
         </h1>
         <span className="app-header__subtitle">街をめぐる、夜がはじまる。</span>
         <div className="app-header__buttons">

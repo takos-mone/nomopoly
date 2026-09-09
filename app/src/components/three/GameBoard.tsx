@@ -1,6 +1,7 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import type { GameState } from "../../types";
 import { Board } from "../Board";
+import { BRAND } from "../../brand";
 import type { CardView } from "./Card3D";
 import type { DiceView } from "./Dice3D";
 import "./WorldBoard.css";
@@ -121,7 +122,7 @@ export function GameBoard(props: BoardProps) {
   return (
     <section
       className={immersive ? "world-board world-board--immersive" : "world-board"}
-      aria-label="飲もポリーのゲーム盤面"
+      aria-label={`${BRAND.name}のゲーム盤面`}
     >
       <div className="world-toolbar">
         <div><span className="world-eyebrow">NIGHT WALK</span><strong>夜の街めぐり</strong></div>

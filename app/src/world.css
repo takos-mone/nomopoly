@@ -56,27 +56,13 @@
 }
 .world-hero { padding: 0 0 20px; position: relative; text-align: center; }
 .world-logo {
-  /* カード上端いっぱいに敷いて「店の看板」に見せる */
   display: block;
-  margin: -28px -24px 6px;
+  margin: 0 0 6px;
   padding: 0;
   background: none;
   border: 0;
   box-shadow: none;
   border-radius: 0;
-}
-.world-logo img {
-  display: block;
-  width: 100%;
-  border-radius: 16px 16px 0 0;
-  border-bottom: 3px solid var(--line);
-}
-.world-logo span {
-  display: block;
-  font: 700 11px var(--sans);
-  letter-spacing: 0.32em;
-  color: var(--ink-soft);
-  margin-top: 12px;
 }
 .world-hero p { color: var(--ink-soft); font-size: 13px; }
 .world-badge {
@@ -100,7 +86,6 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--gold-dark
   .app-layout__sidebar { flex-basis: 100%; width: 100%; }
   .setup-screen { width: calc(100% - 24px); margin: 12px; padding: 22px 18px; }
   /* カード側の余白が変わるので、看板の食い込み量も合わせる */
-  .world-logo { margin: -22px -18px 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -110,3 +95,65 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--gold-dark
 .dice-stop-button { animation: world-action-glow 1.2s ease-in-out infinite; }
 @keyframes world-action-glow { 50% { box-shadow: 0 0 0 5px #e3a03855; } }
 @media (prefers-reduced-motion: reduce) { .dice-stop-button { animation: none; } }
+
+/*
+ * タイトルのロゴ。既存商品の絵柄を使わず、文字だけで組む。
+ * 和文を主役に据え、欧文は下に小さく敷いて版面を締める。
+ */
+.world-logo--type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+}
+.world-logo__name {
+  font-family: var(--heading);
+  /* 和文が主役。欧文より明確に大きくして、視線がまずここへ来るようにする */
+  font-size: clamp(38px, 12vw, 58px);
+  color: var(--noren);
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  text-shadow: 0 2px 0 var(--line);
+}
+.world-logo__latin {
+  font-family: "Jost", "Futura", var(--sans);
+  font-weight: 700;
+  font-size: clamp(9px, 2.2vw, 11px);
+  letter-spacing: 0.3em;
+  color: var(--ink-soft);
+  text-indent: 0.3em;
+  margin-top: 4px;
+}
+.world-logo__latin em {
+  font-style: normal;
+  color: var(--gold, #e3a038);
+}
+
+/* 法務リンクの並び。目立たせすぎず、しかし必ず見つかる位置に置く。 */
+.setup-footer {
+  margin: 26px 0 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.setup-footer button {
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  font: inherit;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.setup-footer button:hover { color: var(--noren); }
+.setup-footer__note {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 11px;
+}
