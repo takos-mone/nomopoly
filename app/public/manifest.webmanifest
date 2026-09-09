@@ -1,7 +1,7 @@
 {
-  "name": "飲もポリー 3D",
-  "short_name": "飲もポリー",
-  "description": "飲み屋街をめぐる3Dすごろくゲーム",
+  "name": "ハシゴロク 3D",
+  "short_name": "ハシゴロク",
+  "description": "飲み屋街をめぐる3Dすごろく。同じ端末を回して2〜6人で遊べます。",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -16,7 +16,7 @@
     },
     {
       "src": "./icons/app-icon.png",
-      "sizes": "1254x1254",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     }
