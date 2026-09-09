@@ -1,0 +1,26 @@
+/*
+ * 広告枠。盤面を押し出さないことを最優先にする。
+ * 埋まらなかったときに高さだけが残ると間の抜けた空白になるので、その場合は畳む。
+ */
+.ad-slot {
+  margin: 18px auto 0;
+  width: 100%;
+  max-width: 728px;
+  text-align: center;
+}
+
+/* 「広告」であることを明示する。誤クリックを誘う配置は掲載側でも禁じられている。 */
+.ad-slot__label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.ad-slot[data-filled="false"] { display: none; }
+
+/* 設定画面の下。ここは縦に伸びても遊びの邪魔にならない */
+.ad-slot--setup-footer { min-height: 100px; }
+/* 結果画面。遊び終わったあとなので一番見てもらえる */
+.ad-slot--result { min-height: 250px; }

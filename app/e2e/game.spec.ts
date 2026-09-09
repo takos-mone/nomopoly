@@ -2,9 +2,10 @@ import { expect, test } from '@playwright/test';
 test('plays in 3D, inspects a property, switches views, and resumes its independent save', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.addInitScript(() => { localStorage.setItem('nomopoly-savegame', 'existing-product-save'); localStorage.setItem('nomopoly-3d-muted', '1'); Math.random = () => 0.2; });
+  await page.addInitScript(() => { localStorage.setItem('nomopoly-savegame', 'existing-product-save'); localStorage.setItem('nomopoly-3d-muted', '1');
+    localStorage.setItem('nomopoly-3d-age-ok', '1'); Math.random = () => 0.2; });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /飲もポリー/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /ハシゴロク/ })).toBeVisible();
   await page.screenshot({ path: `test-results/${testInfo.project.name}-setup.png`, fullPage: true });
   await page.getByPlaceholder('プレイヤー1の名前').fill('あき');
   await page.getByRole('button', { name: 'ゲーム開始', exact: true }).click();
@@ -59,6 +60,7 @@ test('names a bought property, then wipes it clean on bankruptcy', async ({ page
     const seq = [0.05, 0.3];
     Math.random = () => seq[i++ % seq.length];
     localStorage.setItem('nomopoly-3d-muted', '1');
+    localStorage.setItem('nomopoly-3d-age-ok', '1');
   });
   await page.goto('/');
   await page.getByPlaceholder('プレイヤー1の名前').fill('あき');
@@ -108,6 +110,7 @@ async function drawFirstCard(page: import('@playwright/test').Page, flat: boolea
   await page.addInitScript(() => {
     Math.random = () => 0.05;
     localStorage.setItem('nomopoly-3d-muted', '1');
+    localStorage.setItem('nomopoly-3d-age-ok', '1');
   });
   await page.goto('/');
   await page.getByPlaceholder('プレイヤー1の名前').fill('あき');
@@ -140,5 +143,35 @@ test('keeps the card effect popup in the flat view', async ({ page }) => {
   // 平面表示にはカードの3D演出がないので、これまで通り説明をポップアップで出す
   await expect(page.locator('.notice-card__detail')).toBeVisible();
   await expect(page.locator('.notice-overlay--bare')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('gates on age before anything else, and links the legal pages', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  // お酒を扱う以上、最初に年齢確認を通す
+  await expect(page.getByRole('heading', { name: /20歳以上ですか/ })).toBeVisible();
+  await expect(page.getByPlaceholder('プレイヤー1の名前')).toHaveCount(0);
+  await page.screenshot({ path: `test-results/${testInfo.project.name}-agegate.png` });
+
+  await page.getByRole('button', { name: 'いいえ' }).click();
+  await expect(page.getByRole('heading', { name: 'またのお越しを' })).toBeVisible();
+  await page.getByRole('button', { name: '戻る' }).click();
+  await page.getByRole('button', { name: /はい、20歳以上です/ }).click();
+  await expect(page.getByPlaceholder('プレイヤー1の名前')).toBeVisible();
+  await page.screenshot({ path: `test-results/${testInfo.project.name}-setup.png`, fullPage: true });
+
+  // 広告を載せるうえで掲示が要る2つ
+  await page.getByRole('button', { name: 'プライバシーポリシー' }).click();
+  await expect(page.getByRole('heading', { name: 'プライバシーポリシー' })).toBeVisible();
+  await page.locator('.legal__close button').click();
+  await page.getByRole('button', { name: '利用規約' }).click();
+  await expect(page.getByText(/一気飲みや、飲めない方への飲酒の強要/)).toBeVisible();
+  await page.locator('.legal__close button').click();
+
+  // 一度確認したら次からは聞かない
+  await page.reload();
+  await expect(page.getByPlaceholder('プレイヤー1の名前')).toBeVisible();
   expect(errors).toEqual([]);
 });
