@@ -69,10 +69,10 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   return (
     <div className="setup-screen">
       <div className="world-hero">
-        <h1 className="world-logo world-logo--type">
-          <span className="world-logo__name">{BRAND.name}</span>
-          <span className="world-logo__latin">
-            {BRAND.latin} <em>{BRAND.edition}</em>
+        <h1 className="world-logo">
+          <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt={BRAND.name} />
+          <span>
+            {BRAND.latin} {BRAND.edition}
           </span>
         </h1>
         <p>{BRAND.tagline}</p>

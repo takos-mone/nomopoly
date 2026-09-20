@@ -5,7 +5,7 @@ test('plays in 3D, inspects a property, switches views, and resumes its independ
   await page.addInitScript(() => { localStorage.setItem('nomopoly-savegame', 'existing-product-save'); localStorage.setItem('nomopoly-3d-muted', '1');
     localStorage.setItem('nomopoly-3d-age-ok', '1'); Math.random = () => 0.2; });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /ハシゴロク/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /飲もポリー/ })).toBeVisible();
   await page.screenshot({ path: `test-results/${testInfo.project.name}-setup.png`, fullPage: true });
   await page.getByPlaceholder('プレイヤー1の名前').fill('あき');
   await page.getByRole('button', { name: 'ゲーム開始', exact: true }).click();
