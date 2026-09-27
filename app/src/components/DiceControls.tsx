@@ -25,7 +25,6 @@ export function DiceControls({ state, dispatch, turnPhase, onDiceViewChange }: D
   const [rolling, setRolling] = useState(false);
   const [justLanded, setJustLanded] = useState(false);
   const [displayDice, setDisplayDice] = useState<[number, number]>([1, 1]);
-  const [confirmingPurchase, setConfirmingPurchase] = useState(false);
   // 出目を確定してから、プレイヤーが内容を確認してタップするまで待つ。
   // ここに値が入っている間はまだ ROLL_DICE を投げていない(=盤面は動かない)。
   const [rolledDice, setRolledDice] = useState<[number, number] | null>(null);
@@ -48,10 +47,6 @@ export function DiceControls({ state, dispatch, turnPhase, onDiceViewChange }: D
     onDiceViewChange({ rolling, count: 2, result: rolledDice });
     return () => onDiceViewChange(IDLE_DICE);
   }, [rolling, rolledDice, onDiceViewChange]);
-
-  useEffect(() => {
-    if (!state.pendingPurchase) setConfirmingPurchase(false);
-  }, [state.pendingPurchase]);
 
   const startRolling = () => {
     setRolling(true);
@@ -90,37 +85,27 @@ export function DiceControls({ state, dispatch, turnPhase, onDiceViewChange }: D
   if (state.pendingPurchase) {
     const square = state.squares[state.pendingPurchase.squareId];
     const price = state.pendingPurchase.price;
+    // 代金の支払い方(飲みきる・免除権・抵当・後で飲む)は、このあと飲み代の
+    // ポップアップで選べる。ここで「飲み終えた」を聞くと二重になるので聞かない。
     return (
       <div className={turnPhase === "in" ? "board-overlay board-overlay--turn-in" : "board-overlay"}>
-        {!confirmingPurchase ? (
-          <div className="purchase-prompt">
-            <p>
-              {square.name} を {price} unit で購入しますか?
-            </p>
-            <button className="primary-button" onClick={() => setConfirmingPurchase(true)}>
-              購入する
-            </button>
-            <button className="secondary-button" onClick={() => dispatch({ type: "DECLINE_PURCHASE" })}>
-              見送る
-            </button>
-          </div>
-        ) : (
-          <div className="purchase-prompt">
-            <p>{price} unit 飲み終えましたか?</p>
-            <button
-              className="primary-button"
-              onClick={() => {
-                playPurchase();
-                dispatch({ type: "CONFIRM_PURCHASE" });
-              }}
-            >
-              飲み終えた
-            </button>
-            <button className="secondary-button" onClick={() => setConfirmingPurchase(false)}>
-              戻る
-            </button>
-          </div>
-        )}
+        <div className="purchase-prompt">
+          <p>
+            {square.name} を {price} unit で購入しますか?
+          </p>
+          <button
+            className="primary-button"
+            onClick={() => {
+              playPurchase();
+              dispatch({ type: "CONFIRM_PURCHASE" });
+            }}
+          >
+            購入する
+          </button>
+          <button className="secondary-button" onClick={() => dispatch({ type: "DECLINE_PURCHASE" })}>
+            見送る
+          </button>
+        </div>
       </div>
     );
   }

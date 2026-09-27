@@ -84,12 +84,15 @@ test('names a bought property, then wipes it clean on bankruptcy', async ({ page
   await clearNotices();
 
   await page.getByRole('button', { name: '購入する', exact: true }).click();
-  await page.getByRole('button', { name: '飲み終えた', exact: true }).click();
 
   // 命名モードなので、取得の通知より先に名前を聞かれる
   await expect(page.getByRole('heading', { name: /店の名前を決める/ })).toBeVisible();
   await page.locator('.naming-modal__input').fill('あきの止まり木');
   await page.locator('.naming-modal__actions .primary-button').click();
+  await clearNotices();
+  // 代金は飲み代として立つので、ここで支払う(免除権などもここで選べる)
+  await expect(page.getByText(/購入代金/)).toBeVisible();
+  await page.getByRole('button', { name: /飲みきった/ }).click();
   await clearNotices();
   await expect(page.locator('.world-directory')).toContainText('あきの止まり木');
 

@@ -646,23 +646,29 @@ function baseReducer(state: GameState, action: GameAction): GameState {
       return createPendingDrink(cleared, player.id, JAIL_ESCAPE_COST, "タクシー待機所からの脱出");
     }
 
+    /**
+     * 物件を取得し、その代金を飲み代として立てる。
+     *
+     * 以前は代金をその場で累計飲酒量へ足し込んでいたため、免除権も抵当も交渉も
+     * 使えず、「買うなら必ず飲みきるしかない」状態だった。改装費と同じように
+     * createPendingDrink を通すことで、支払い方をプレイヤーが選べるようにする。
+     *
+     * 物件の取得自体は先に確定させる。支払いを先送りできるのは飲み代と同じ扱いで、
+     * 「買ったのに手に入らない」中途半端な状態を作らないため。
+     */
     case "CONFIRM_PURCHASE": {
       if (!state.pendingPurchase) return state;
       const player = currentPlayer(state);
       const { squareId, price } = state.pendingPurchase;
       const square = state.squares[squareId];
-      const updatedPlayers = state.players.map((p) =>
-        p.id === player.id ? { ...p, totalUnitsDrunk: p.totalUnitsDrunk + price } : p,
-      );
       const log = pushLog(
         state.log,
         state.turn,
         player.id,
-        `${player.name}は${square.name}を${price} unitで購入(即座に飲んで支払い)。`,
+        `${player.name}は${square.name}を${price} unitで購入。`,
       );
       const purchased: GameState = {
         ...state,
-        players: updatedPlayers,
         ownership: { ...state.ownership, [squareId]: player.id },
         shopLevel: { ...state.shopLevel, [squareId]: state.shopLevel[squareId] ?? 0 },
         pendingPurchase: null,
@@ -670,13 +676,8 @@ function baseReducer(state: GameState, action: GameAction): GameState {
         pendingNaming: state.customNaming ? { squareId, playerId: player.id } : null,
         log,
       };
-      return pushGain(
-        purchased,
-        player.id,
-        "🏠",
-        `${square.name} を取得!`,
-        "",
-      );
+      const gained = pushGain(purchased, player.id, "🏠", `${square.name} を取得!`, "");
+      return createPendingDrink(gained, player.id, price, `${square.name}の購入代金`);
     }
 
     case "SET_SQUARE_NAME": {

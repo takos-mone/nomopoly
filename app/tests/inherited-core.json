@@ -2,7 +2,7 @@
   "source": "takos-mone/nomopoly@cde263a34fac26edd71ef85eb306b8fc2482b504",
   "files": {
     "src/types.ts": "cfbc5f60b5f179c4146aa52c5952178abe29389bbacec224f092d25522cbca7b",
-    "src/state/gameReducer.ts": "a5e6b244fb5c54fd18715f25d860ca7bbcaaf07b8f5005a50112530496a75628",
+    "src/state/gameReducer.ts": "3c782c2a40b5d0628b1328b0e8fcdbd679e5b4934500f878668b1add2c665827",
     "src/data/playerColors.ts": "4b78b89fe9a6e20c21819b0eb1ec5ccbcb356b9abb2af66ed15939f42671a5fd",
     "src/data/cards.ts": "b2ce2d45cfb0b2df12baaea6564938c6be5eccd925ab806b8844109e0334d85e",
     "src/data/board.ts": "30a6c4742f9959bc473e0d43cace74b68a78a151dd7c201dceb2c89aa140cc2b",

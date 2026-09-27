@@ -13,6 +13,13 @@ function dismiss(state: ReturnType<typeof start>) {
   for (let i = 0; state.notices.length && i < 30; i++) state = gameReducer(state, { type: 'DISMISS_NOTICE' });
   return state;
 }
+/** 購入代金・飲み代を「飲みきる」で片付けて、通知も送る */
+function settle(state: ReturnType<typeof start>) {
+  for (let i = 0; i < 10 && (state.pendingDrink || state.notices.length); i++) {
+    state = state.pendingDrink ? gameReducer(state, { type: 'CONFIRM_DRINK' }) : dismiss(state);
+  }
+  return state;
+}
 beforeEach(() => {
   const values = new Map<string, string>();
   vi.stubGlobal('localStorage', { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) });
@@ -27,7 +34,7 @@ describe('inherited game behavior', () => {
     expect(state.pendingPurchase?.squareId).toBe(3);
     const price = state.pendingPurchase!.price;
     state = dismiss(state);
-    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = settle(gameReducer(state, { type: 'CONFIRM_PURCHASE' }));
     expect(state.ownership[3]).toBe(0);
     expect(state.players[0].totalUnitsDrunk).toBe(price);
     state = dismiss(state);
@@ -87,7 +94,7 @@ describe('rules changed for the 3D product', () => {
   it('pays the owner an exemption equal to the full drink charge', () => {
     let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
     state = dismiss(state);
-    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = settle(gameReducer(state, { type: 'CONFIRM_PURCHASE' }));
     state = dismiss(state);
     state = gameReducer(state, { type: 'END_TURN' });
     // 2人目が同じマスに止まる
@@ -103,7 +110,7 @@ describe('rules changed for the 3D product', () => {
     });
     state = gameReducer(state, { type: 'ROLL_DICE', dice: [1, 2] });
     state = dismiss(state);
-    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = settle(gameReducer(state, { type: 'CONFIRM_PURCHASE' }));
     expect(state.pendingNaming).toEqual({ squareId: 3, playerId: 0 });
 
     state = gameReducer(state, { type: 'SET_SQUARE_NAME', name: 'あきの止まり木' });
@@ -122,7 +129,7 @@ describe('rules changed for the 3D product', () => {
       type: 'START_GAME', names: ['あき', 'はる'], eliminationThreshold: 200, customNaming: true,
     });
     state = gameReducer(state, { type: 'ROLL_DICE', dice: [1, 2] });
-    state = dismiss(gameReducer(dismiss(state), { type: 'CONFIRM_PURCHASE' }));
+    state = settle(gameReducer(dismiss(state), { type: 'CONFIRM_PURCHASE' }));
     state = gameReducer(state, { type: 'SET_SQUARE_NAME', name: '   ' });
     expect(state.pendingNaming).toBeNull();
     expect(state.squares[3].name).toBe(BOARD[3].name);
@@ -134,7 +141,7 @@ describe('rules changed for the 3D product', () => {
     });
     state = gameReducer(state, { type: 'ROLL_DICE', dice: [1, 2] });
     state = dismiss(state);
-    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = settle(gameReducer(state, { type: 'CONFIRM_PURCHASE' }));
     state = gameReducer(state, { type: 'SET_SQUARE_NAME', name: 'つぶれる店' });
     state = dismiss(state);
     state = gameReducer(state, { type: 'BUILD_SHOP', squareId: 3 });
@@ -151,6 +158,34 @@ describe('rules changed for the 3D product', () => {
     expect(state.players[state.currentPlayerIndex].id).toBe(1);
   });
 
+  // 買うなら必ず飲みきるしかない状態だったので、代金も飲み代と同じ扱いにした
+  it('lets the buyer spend exemption on the purchase price', () => {
+    let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
+    state = dismiss(state);
+    const price = state.pendingPurchase!.price;
+    // 免除権を持たせてから購入する
+    state = { ...state, players: state.players.map((p, i) => (i === 0 ? { ...p, exemptionUnits: price } : p)) };
+    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    // 物件は先に手に入り、代金は飲み代として残る
+    expect(state.ownership[3]).toBe(0);
+    expect(state.pendingDrink?.amount).toBe(price);
+    expect(state.players[0].totalUnitsDrunk).toBe(0);
+    // 免除権で全額まかなえば、一滴も飲まずに済む
+    state = gameReducer(state, { type: 'USE_EXEMPTION' });
+    expect(state.pendingDrink).toBeNull();
+    expect(state.players[0].totalUnitsDrunk).toBe(0);
+    expect(state.players[0].exemptionUnits).toBe(0);
+  });
+  it('can defer the purchase price like any other drink', () => {
+    let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
+    state = dismiss(state);
+    const price = state.pendingPurchase!.price;
+    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = gameReducer(state, { type: 'DEFER_DRINK' });
+    expect(state.ownership[3]).toBe(0);
+    expect(state.players[0].deferredDrinks).toEqual([price]);
+    expect(state.players[0].totalUnitsDrunk).toBe(0);
+  });
   it('ignores bankruptcy for a player who already left', () => {
     let state = gameReducer(start(), { type: 'DECLARE_BANKRUPTCY', playerId: 0 });
     expect(gameReducer(state, { type: 'DECLARE_BANKRUPTCY', playerId: 0 })).toEqual(state);
@@ -160,7 +195,7 @@ describe('rules changed for the 3D product', () => {
   it('drops the retired player\'s pending prompts', () => {
     let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
     state = dismiss(state);
-    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = settle(gameReducer(state, { type: 'CONFIRM_PURCHASE' }));
     state = dismiss(state);
     state = gameReducer(state, { type: 'END_TURN' });
     state = gameReducer(state, { type: 'ROLL_DICE', dice: [1, 2] });
@@ -174,7 +209,7 @@ describe('rules changed for the 3D product', () => {
   it('clears the deferred drinks of a player who leaves', () => {
     let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
     state = dismiss(state);
-    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = settle(gameReducer(state, { type: 'CONFIRM_PURCHASE' }));
     state = dismiss(state);
     state = gameReducer(state, { type: 'END_TURN' });
     state = gameReducer(state, { type: 'ROLL_DICE', dice: [1, 2] });
@@ -190,7 +225,7 @@ describe('rules changed for the 3D product', () => {
   it('cancels a trade the retired player was part of', () => {
     let state = gameReducer(start(), { type: 'ROLL_DICE', dice: [1, 2] });
     state = dismiss(state);
-    state = gameReducer(state, { type: 'CONFIRM_PURCHASE' });
+    state = settle(gameReducer(state, { type: 'CONFIRM_PURCHASE' }));
     state = dismiss(state);
     state = gameReducer(state, {
       type: 'PROPOSE_TRADE',
