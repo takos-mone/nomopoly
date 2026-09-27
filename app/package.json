@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "dev:hashigoroku": "VITE_BRAND=hashigoroku vite",
     "build:hashigoroku": "tsc -b && VITE_BRAND=hashigoroku vite build && node scripts/build-sw.mjs",
-    "preview:hashigoroku": "vite preview"
+    "preview:hashigoroku": "vite preview",
+    "deploy:hashigoroku": "npm run build:hashigoroku && cd .. && firebase deploy --only hosting"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

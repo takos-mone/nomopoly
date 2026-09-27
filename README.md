@@ -1,8 +1,32 @@
-# 飲もポリー 3D / NOMOPOLY 3D
+# 飲もポリー 3D / ハシゴロク 3D
 
-飲み屋街のミニチュアを巡る3Dすごろくゲーム。既存の「飲もポリー」のルール・デザインを引き継いだ、独立した新プロダクトです。
+飲み屋街のミニチュアを巡る3Dすごろくゲーム。同じ端末を回して2〜6人で遊びます。
 
-一般公開にあたり、名称とマスコットを独自のものへ差し替えました。理由と、公開・収益化の段取りは [docs/public-launch-plan.md](docs/public-launch-plan.md) にまとめています。
+**同じゲームを2つの名前で出しています。** ルール・盤面・3Dはまったく同じで、違うのは名前と絵柄だけです。
+
+| | 飲もポリー | ハシゴロク |
+|---|---|---|
+| 用途 | 身内で遊ぶ | 一般公開・収益化 |
+| URL | https://takos-mone.github.io/nomopoly/ | https://hashigoroku.web.app |
+| 配信 | GitHub Pages (`main` へのpushで自動) | Firebase Hosting (手動) |
+| 名前・絵柄 | 元のまま | 独自のものへ差し替え |
+
+一般公開する側で差し替えてあるのは、元の名前と絵柄が実在の商品を強く想起させるためです。身内で遊ぶ範囲では問題になりませんが、広告を載せて公開する時点で立場が変わります。経緯と収益化の段取りは [docs/public-launch-plan.md](docs/public-launch-plan.md) にまとめています。
+
+## ブランドの切り替え
+
+```sh
+cd app
+npm run dev                 # 飲もポリー
+npm run dev:hashigoroku     # ハシゴロク
+npm run build               # 飲もポリー(Pages用は GITHUB_PAGES=true)
+npm run build:hashigoroku   # ハシゴロク
+npm run deploy:hashigoroku  # ビルドして Firebase へ配信
+```
+
+使うブランドの定義と絵柄だけがビルドに入ります。`#brand` / `#illustration` の別名で実体を差し替え、画像は `app/brand-assets/<ブランド>/` に分けて、使うほうだけを `dist` へ複製します。`public/` に置くと両方のビルドへ入り、一般公開版に差し替え前の絵柄が混ざるためです。
+
+混ざっていないことは `app/tests/brand.test.ts` が実際にビルドして確かめます。
 
 ## 現在の試作
 
