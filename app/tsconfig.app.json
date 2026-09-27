@@ -6,6 +6,13 @@
     "module": "esnext",
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
+
+    /* ブランドごとに実体が差し替わる別名。実際の解決は vite.config.ts が行う。
+       型検査では代表として身内向けの版を見る(両ブランドで同じ型のため)。 */
+    "paths": {
+      "#brand": ["./src/brands/nomopoly.ts"],
+      "#illustration": ["./src/components/IllustrationSprite.tsx"]
+    },
     "skipLibCheck": true,
 
     /* Bundler mode */

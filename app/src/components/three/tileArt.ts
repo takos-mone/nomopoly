@@ -8,6 +8,7 @@
  */
 import { CanvasTexture, SRGBColorSpace } from "three";
 import type { Square } from "../../types";
+import { BRAND } from "../../brand";
 
 const INK = "#201408";
 const NOREN = "#c8172a";
@@ -21,7 +22,7 @@ const PANEL = "#fffdf7";
 const RES = 192;
 const BODY = '"Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif';
 const DISPLAY = '"Yusei Magic", "Zen Maru Gothic", sans-serif';
-/** 看板の NOMOPOLY と同じ系統の幾何学サンセット */
+/** 看板の欧文表記と同じ系統の幾何学サンセット */
 const LOGO = '"Jost", "Futura", "Century Gothic", sans-serif';
 /** 立体の色帯が乗る領域。ここには描かない。 */
 const BAND = RES * 0.24;
@@ -451,8 +452,10 @@ export function tileFaceTexture(square: Square): CanvasTexture {
 }
 
 /**
- * 盤中央のロゴ。ヘッダーと同じ「NOMOPOLY 3D」を、同じ幾何学サンセットで組む。
+ * 盤中央のロゴ。ヘッダーと同じ欧文表記を、同じ幾何学サンセットで組む。
  * 枠で囲わず文字だけを置くことで、盤に刷られた表記に見せる。
+ *
+ * 文字の長さで版が変わるので、幅に収まらなければ字を詰める。
  */
 export function centerLogoTexture(): CanvasTexture {
   const W = 768;
@@ -466,28 +469,35 @@ export function centerLogoTexture(): CanvasTexture {
   if (!c) throw new Error("2Dコンテキストを取得できませんでした");
 
   c.textBaseline = "alphabetic";
-  c.font = `700 108px ${LOGO}`;
-  const word = "NOMOPOLY";
+  const word = BRAND.latin;
   const gap = 22;
-  c.font = `700 92px ${LOGO}`;
-  const threedWidth = c.measureText("3D").width;
-  c.font = `700 108px ${LOGO}`;
-  const wordWidth = c.measureText(word).width;
+  // 盤の幅に収まる字の大きさを探す。名前を変えてもはみ出さないようにする。
+  let size = 108;
+  let wordWidth = 0;
+  let threedWidth = 0;
+  for (; size > 40; size -= 2) {
+    c.font = `700 ${Math.round(size * 0.85)}px ${LOGO}`;
+    threedWidth = c.measureText(BRAND.edition).width;
+    c.font = `700 ${size}px ${LOGO}`;
+    wordWidth = c.measureText(word).width;
+    if (wordWidth + gap + threedWidth <= W - 48) break;
+  }
   const left = (W - (wordWidth + gap + threedWidth)) / 2;
-  const baseline = H / 2 + 38;
+  const baseline = H / 2 + size * 0.35;
 
+  c.font = `700 ${size}px ${LOGO}`;
   c.fillStyle = NOREN;
   c.fillText(word, left, baseline);
 
-  // 3D は金の押し出しで立体的に見せる
-  c.font = `700 92px ${LOGO}`;
+  // 添え字は金の押し出しで立体的に見せる
+  c.font = `700 ${Math.round(size * 0.85)}px ${LOGO}`;
   const tx = left + wordWidth + gap;
   c.fillStyle = INK;
-  c.fillText("3D", tx + 8, baseline + 8);
+  c.fillText(BRAND.edition, tx + 8, baseline + 8);
   c.fillStyle = "#b8842a";
-  c.fillText("3D", tx + 4, baseline + 4);
+  c.fillText(BRAND.edition, tx + 4, baseline + 4);
   c.fillStyle = GOLD;
-  c.fillText("3D", tx, baseline);
+  c.fillText(BRAND.edition, tx, baseline);
 
   const tex = new CanvasTexture(canvas);
   tex.colorSpace = SRGBColorSpace;

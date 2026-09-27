@@ -69,12 +69,22 @@ export function SetupScreen({ onStart, onResume }: SetupScreenProps) {
   return (
     <div className="setup-screen">
       <div className="world-hero">
-        <h1 className="world-logo">
-          <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt={BRAND.name} />
-          <span>
-            {BRAND.latin} {BRAND.edition}
-          </span>
-        </h1>
+        {/* 身内向けの版は看板の画像、一般公開版は文字だけで組む */}
+        {BRAND.logo === "banner" ? (
+          <h1 className="world-logo">
+            <img src={`${import.meta.env.BASE_URL}icons/banner.png`} alt={BRAND.name} />
+            <span>
+              {BRAND.latin} {BRAND.edition}
+            </span>
+          </h1>
+        ) : (
+          <h1 className="world-logo world-logo--type">
+            <span className="world-logo__name">{BRAND.name}</span>
+            <span className="world-logo__latin">
+              {BRAND.latin} <em>{BRAND.edition}</em>
+            </span>
+          </h1>
+        )}
         <p>{BRAND.tagline}</p>
         <span className="world-badge">3Dすごろく · 2〜6人 · 同じ端末で遊ぶ</span>
       </div>

@@ -10,7 +10,10 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "dev:hashigoroku": "VITE_BRAND=hashigoroku vite",
+    "build:hashigoroku": "tsc -b && VITE_BRAND=hashigoroku vite build && node scripts/build-sw.mjs",
+    "preview:hashigoroku": "vite preview"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
