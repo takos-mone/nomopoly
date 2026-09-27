@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
 import { Group, MOUSE, MeshStandardMaterial, NoToneMapping, RepeatWrapping, TOUCH, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { COLOR_GROUP_HEX } from "../../data/board";
+import { GROUP_COLOR } from "../../theme";
 import { PLAYER_COLORS } from "../../data/playerColors";
 import { isOwnable, type Player, type Square } from "../../types";
 import { BoardEffectLayer, PilePop, ShakeGroup, useBoardEffects, type PilePulse } from "./BoardEffects";
@@ -466,7 +466,7 @@ function PopIn({ trigger, children }: { trigger: string; children: ReactNode }) 
 }
 
 function Shop({ square, level, ownerColor, mortgaged }: { square: Square; level: number; ownerColor?: string; mortgaged: boolean }) {
-  const groupColor = square.type === "property" ? COLOR_GROUP_HEX[square.colorGroup] : GOLD;
+  const groupColor = square.type === "property" ? GROUP_COLOR[square.colorGroup] : GOLD;
   const skin: ShopSkin = {
     body: mortgaged ? MUTED : BODY_PALETTE[square.id % BODY_PALETTE.length],
     roof: mortgaged ? "#8d8781" : ownerColor ?? ROOF,
@@ -506,7 +506,7 @@ function Tile({
   mortgaged: boolean;
   onSelect: () => void;
 }) {
-  const groupColor = square.type === "property" ? COLOR_GROUP_HEX[square.colorGroup] : undefined;
+  const groupColor = square.type === "property" ? GROUP_COLOR[square.colorGroup] : undefined;
   return (
     <group
       position={worldPosition(square.id)}

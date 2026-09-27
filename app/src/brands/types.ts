@@ -21,4 +21,12 @@ export interface BrandDef {
   art: ArtStyle;
   /** タイトルのロゴを画像で出すか、文字で組むか */
   logo: "banner" | "type";
+  /**
+   * 色グループの塗り。キーは board.ts の colorGroup と同じ。
+   * ブランドごとに必ず持たせる。既定値を共有の置き場から拾う形にすると、
+   * 一般公開版のビルドにも元の配色が残ってしまうため。
+   */
+  colorGroups: Record<string, string>;
+  /** 建物の描き方。"house" は小屋と宿、"lantern" は提灯と暖簾。 */
+  buildingStyle: "house" | "lantern";
 }

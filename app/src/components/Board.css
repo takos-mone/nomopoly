@@ -402,3 +402,52 @@
     -webkit-line-clamp: 2;
   }
 }
+
+/*
+ * 一般公開版の建物。
+ *
+ * 元の「緑の小屋 / 赤い宿」は実在の商品の意匠そのものなので、
+ * こちらは提灯と暖簾に置き換える。数え方(改装ごとに1つ増え、最大で1軒)は同じ。
+ */
+.board-square__buildings--lantern .board-square__house {
+  width: clamp(4px, 1.1vw, 7px);
+  height: clamp(5px, 1.4vw, 9px);
+  background: #c8172a;
+  border: 0.5px solid #6d0a16;
+  /* 提灯のふくらみ。上下を絞って縦長の樽形にする */
+  border-radius: 45% / 32%;
+}
+.board-square__buildings--lantern .board-square__house::before {
+  /* 上の口金。三角屋根ではなく横棒にして、家に見えないようにする */
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 100%;
+  height: 26%;
+  background: #241a10;
+  clip-path: none;
+}
+
+.board-square__buildings--lantern .board-square__hotel {
+  width: clamp(10px, 2.6vw, 16px);
+  height: clamp(5px, 1.3vw, 8px);
+  background: #243b6b;
+  border: 0.5px solid #101b33;
+  border-radius: 1px 1px 0 0;
+  position: relative;
+}
+.board-square__buildings--lantern .board-square__hotel::before {
+  /* 暖簾の切れ込み。三角屋根(clip-path)を打ち消してから、下端を2本に割る */
+  content: "";
+  position: absolute;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  top: auto;
+  bottom: 0;
+  width: 1.5px;
+  height: 45%;
+  background: var(--paper, #f4ecd8);
+  clip-path: none;
+}

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { GameState } from "../types";
-import { COLOR_GROUP_HEX } from "../data/board";
+import { BUILDING_STYLE, GROUP_COLOR } from "../theme";
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 import { squareGridPosition } from "../logic/layout";
 import { BRAND } from "../brand";
@@ -24,7 +24,7 @@ export function Board({ state, onSelectSquare, visualPositions, overlay }: Board
         const owner = ownerId !== undefined ? state.players.find((p) => p.id === ownerId) : undefined;
         const level = state.shopLevel[square.id] ?? 0;
         const playersHere = state.players.filter((p) => (visualPositions[p.id] ?? p.position) === square.id);
-        const stripeColor = square.type === "property" ? COLOR_GROUP_HEX[square.colorGroup] : undefined;
+        const stripeColor = square.type === "property" ? GROUP_COLOR[square.colorGroup] : undefined;
         const ownerColor = owner ? PLAYER_COLORS[owner.id % PLAYER_COLORS.length] : undefined;
         const mortgaged = !!state.mortgages[square.id];
 
@@ -58,9 +58,12 @@ export function Board({ state, onSelectSquare, visualPositions, overlay }: Board
                 {PLAYER_EMOJIS[owner.id % PLAYER_EMOJIS.length]}
               </span>
             )}
-            {/* 本家準拠: 改装1回ごとに緑の家、最大レベルで赤いホテル1軒に置き換わる */}
+            {/* 改装1回ごとに1つ増え、最大レベルで1軒の大きな印に置き換わる */}
             {square.type === "property" && level > 0 && !mortgaged && (
-              <div className="board-square__buildings" title={level >= 5 ? "最大レベル(ホテル)" : `Lv${level}`}>
+              <div
+                className={`board-square__buildings board-square__buildings--${BUILDING_STYLE}`}
+                title={level >= 5 ? "最大レベル" : `Lv${level}`}
+              >
                 {level >= 5 ? (
                   <span className="board-square__hotel" />
                 ) : (

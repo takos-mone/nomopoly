@@ -40,6 +40,8 @@ describe('brand separation', () => {
     expect(bundleText()).not.toContain('HASHIGOROKU');
     expect(existsSync('dist/icons/banner.png')).toBe(true);
     expect(existsSync('dist/illustrations/poses.png')).toBe(true);
+    // 身内向けは元の配色のまま
+    expect(bundleText()).toContain('8b5a2b');
   }, 120_000);
 
   it('never ships the private artwork or name in the public build', () => {
@@ -52,5 +54,9 @@ describe('brand separation', () => {
     // 差し替え前の絵柄が配信物に混ざらないこと
     const files = distFiles();
     expect(files.filter((f) => /banner\.png|poses\.png/.test(f))).toEqual([]);
+    // 盤の配色も、差し替え前のものが残っていないこと
+    for (const hex of ["8b5a2b", "87ceeb", "e6a8d7", "f0a13a", "2a5cb8"]) {
+      expect(bundleText(), `旧配色 #${hex} が残っている`).not.toContain(hex);
+    }
   }, 120_000);
 });

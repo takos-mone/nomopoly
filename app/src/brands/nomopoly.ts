@@ -1,4 +1,5 @@
 /** 身内で遊ぶ版。元の名前と絵柄のまま。 */
+import { COLOR_GROUP_HEX } from "../data/board";
 import type { BrandDef } from "./types";
 
 export const brand: BrandDef = {
@@ -10,4 +11,6 @@ export const brand: BrandDef = {
   contact: "",
   art: "sprite",
   logo: "banner",
+  colorGroups: COLOR_GROUP_HEX,
+  buildingStyle: "house",
 };
