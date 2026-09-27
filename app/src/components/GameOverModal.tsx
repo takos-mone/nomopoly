@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PLAYER_COLORS, PLAYER_EMOJIS } from "../data/playerColors";
 import { rankPlayers } from "../logic/elimination";
 import { Illustration } from "./Illustration";
 import { playVictory } from "../logic/sound";
+import { buildShareText, shareResult, type ShareResult } from "../logic/share";
 import type { GameAction } from "../state/gameReducer";
 import type { GameState } from "../types";
 import { Modal } from "./Modal";
@@ -13,6 +14,9 @@ interface GameOverModalProps {
 }
 
 export function GameOverModal({ state, dispatch }: GameOverModalProps) {
+  // 共有した直後だけ、どうなったかを短く出す
+  const [shared, setShared] = useState<ShareResult | null>(null);
+
   useEffect(() => {
     playVictory();
   }, []);
@@ -72,9 +76,26 @@ export function GameOverModal({ state, dispatch }: GameOverModalProps) {
           </tbody>
         </table>
 
-        <button className="primary-button" onClick={() => dispatch({ type: "RESET_GAME" })}>
-          もう一度遊ぶ
-        </button>
+        <div className="gameover-modal__actions">
+          <button className="primary-button" onClick={() => dispatch({ type: "RESET_GAME" })}>
+            もう一度遊ぶ
+          </button>
+          <button
+            className="secondary-button"
+            onClick={async () => {
+              setShared(await shareResult(buildShareText(state, location.href)));
+            }}
+          >
+            📣 結果を共有する
+          </button>
+          {/* やめただけのときは何も出さない。知らせることがないため */}
+          {shared === "copied" && (
+            <p className="gameover-modal__shared">結果をコピーしました。好きなところに貼ってください。</p>
+          )}
+          {shared === "failed" && (
+            <p className="gameover-modal__shared">共有できませんでした。結果の表をそのまま見せてください。</p>
+          )}
+        </div>
       </div>
     </Modal>
   );

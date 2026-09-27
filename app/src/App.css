@@ -599,3 +599,17 @@
     width: 100%;
   }
 }
+
+/* 結果画面の締めくくり。もう一度遊ぶを主役に、共有はその下に添える。 */
+.gameover-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.gameover-modal__shared {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
+}
